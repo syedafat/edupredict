@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}My Profile — EduPredict{% endblock %}
+{% block content %}
+<div class="max-w-3xl bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800"><h1 class="text-2xl font-bold">{{ user.get('name', 'Student') }}</h1><p class="text-xs text-slate-500 mt-1">{{ user.get('student_id', 'Student account') }}</p><div class="mt-6 space-y-3 text-sm"><p><strong>Email:</strong> {{ user.get('email', '—') }}</p><p><strong>Department:</strong> {{ user.get('department', '—') }}</p><p><strong>Status:</strong> {{ user.get('status', 'approved')|capitalize }}</p><p><strong>Created:</strong> {{ user.get('created_at', '—') }}</p></div></div>
+{% endblock %}

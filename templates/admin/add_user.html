@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Register User — EduPredict{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-3xl mx-auto">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="space-y-2" role="alert">
+            {% for category, message in messages %}
+            <div class="flex items-start gap-2 rounded-xl border px-4 py-3 text-xs font-semibold {{ 'border-red-200 bg-red-50 text-red-700' if category in ['error', 'danger'] else 'border-teal-200 bg-teal-50 text-teal-700' }}">
+                <i class="fa-solid {{ 'fa-circle-exclamation' if category in ['error', 'danger'] else 'fa-circle-check' }} mt-0.5"></i>
+                <span>{{ message }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+    <!-- Page Header -->
+    <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-[#252525] tracking-tight">{{ 'Create Teacher Account' if teacher_mode else 'Register New User' }}</h1>
+            <p class="text-xs text-gray-500 mt-1">{{ 'Create an approved teacher account for course assignment.' if teacher_mode else 'Create institutional credentials for students or faculty members.' }}</p>
+        </div>
+        <a href="{{ url_for('admin.users') }}" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-[#252525] text-xs font-semibold rounded-xl transition">
+            <i class="fa-solid fa-arrow-left mr-1"></i> Back to Users
+        </a>
+    </div>
+
+    <!-- Form Card -->
+    <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
+        <form method="POST" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-[#252525] uppercase tracking-wider">Full Name</label>
+                    <input type="text" name="name" required value="{{ form_data.get('name', '') if form_data else '' }}" class="w-full px-4 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/50" placeholder="Dr. John Smith">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-[#252525] uppercase tracking-wider">Institutional Email</label>
+                    <input type="email" name="email" required value="{{ form_data.get('email', '') if form_data else '' }}" class="w-full px-4 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/50" placeholder="john.smith@edupredict.edu">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-[#252525] uppercase tracking-wider">Account Role</label>
+                    <select name="role" class="w-full px-4 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/50">
+                        <option value="student" {% if teacher_mode %}disabled{% endif %}>Student</option>
+                        <option value="teacher" {% if teacher_mode %}selected{% endif %}>Teacher / Faculty</option>
+                        <option value="admin">Administrator</option>
+                        <option value="analyst">Data Analyst</option>
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-[#252525] uppercase tracking-wider">Department</label>
+                    <select name="department" class="w-full px-4 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/50">
+                        <option value="se">Software Engineering</option>
+                        <option value="cs">Computer Science</option>
+                        <option value="it">Information Technology</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-xs font-semibold text-[#252525] uppercase tracking-wider">Temporary Password</label>
+                <input type="password" name="password" required class="w-full px-4 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/50" placeholder="••••••••">
+            </div>
+
+            <div class="pt-4 border-t border-gray-100 flex justify-end">
+                <button type="submit" class="px-6 py-3 bg-[#4F46E5] hover:bg-[#6366F1] text-white text-xs font-semibold rounded-xl shadow-md transition flex items-center">
+                    <i class="fa-solid fa-user-plus mr-2"></i> Create Account Profile
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

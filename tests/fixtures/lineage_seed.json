@@ -1,0 +1,29 @@
+{
+  "users": [
+    {"_id": "665000000000000000000001", "name": "Main Admin", "email": "admin@example.com", "role": "admin", "status": "approved"},
+    {"_id": "665000000000000000000002", "name": "Dr. Aisha Khan", "email": "aisha@example.com", "role": "teacher", "status": "approved"},
+    {"_id": "665000000000000000000003", "name": "Ahmed Ali", "email": "ahmed@example.com", "role": "student", "status": "approved", "student_id": "STU-001", "gpa": 3.42},
+    {"_id": "665000000000000000000004", "name": "Sara Noor", "email": "sara@example.com", "role": "student", "status": "approved", "student_id": "STU-002", "gpa": 2.91}
+  ],
+  "courses": [
+    {"_id": "665000000000000000000010", "code": "CS-301", "title": "Database Systems", "teacher_id": "665000000000000000000002", "student_ids": ["665000000000000000000003"], "status": "active", "semester": "Fall 2026"}
+  ],
+  "enrollments": [
+    {"course_id": "665000000000000000000010", "student_id": "665000000000000000000003", "status": "active"}
+  ],
+  "attendance": [
+    {"student_id": "665000000000000000000003", "course_id": "665000000000000000000010", "present": true, "date": "2026-09-01"},
+    {"student_id": "665000000000000000000003", "course_id": "665000000000000000000010", "present": true, "date": "2026-09-03"}
+  ],
+  "grades": [
+    {"student_id": "665000000000000000000003", "course_id": "665000000000000000000010", "assessment": "Quiz 1", "score": 84, "teacher_id": "665000000000000000000002"}
+  ],
+  "predictions": [
+    {"student_id": "665000000000000000000003", "model_type": "dropout", "risk_score": 0.18, "prediction": 0.18}
+  ],
+  "assignments": [
+    {"student_id": "665000000000000000000003", "course_id": "665000000000000000000010", "title": "Schema Design", "status": "pending"}
+  ],
+  "notifications": [],
+  "support_tickets": []
+}

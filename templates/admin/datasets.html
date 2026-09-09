@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Datasets — EduPredict{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between bg-white p-6 rounded-2xl border border-gray-200">
+        <div><h1 class="text-2xl font-bold">Dataset Repository</h1><p class="text-xs text-gray-500 mt-1">Uploaded datasets and their processing status.</p></div>
+        <a href="{{ url_for('admin.upload_data') }}" class="px-4 py-2 bg-[#4F46E5] text-white text-xs font-semibold rounded-xl">Ingest New File</a>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-gray-200"><p class="text-xs text-gray-400 uppercase">Datasets</p><h2 class="text-2xl font-bold">{{ dataset_count }}</h2></div>
+        <div class="bg-white p-5 rounded-2xl border border-gray-200"><p class="text-xs text-gray-400 uppercase">Local storage</p><h2 class="text-2xl font-bold">{{ (total_bytes / 1048576)|round(1) }} MB</h2></div>
+        <div class="bg-white p-5 rounded-2xl border border-gray-200"><p class="text-xs text-gray-400 uppercase">HDFS</p><h2 class="text-sm font-bold">{{ hdfs_status.message }}</h2></div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto"><table class="w-full text-left text-xs">
+            <thead class="bg-gray-50 text-gray-500 uppercase"><tr><th class="p-4">Dataset</th><th class="p-4">Type</th><th class="p-4">Format</th><th class="p-4">Uploaded</th><th class="p-4">HDFS</th><th class="p-4 text-right">Actions</th></tr></thead>
+            <tbody class="divide-y divide-gray-100">
+            {% for dataset in datasets %}
+            <tr><td class="p-4 font-bold">{{ dataset.get('title', dataset.get('original_filename', 'Dataset')) }}</td><td class="p-4">{{ dataset.get('dataset_type', 'general')|capitalize }}</td><td class="p-4 uppercase">{{ dataset.get('extension', '—') }}</td><td class="p-4">{{ dataset.get('uploaded_at', '—') }}</td><td class="p-4">{{ dataset.get('hdfs_status', 'pending')|capitalize }}</td><td class="p-4 text-right"><a href="{{ url_for('data.dataset_detail', dataset_id=dataset['_id']) }}" class="px-3 py-1 bg-gray-100 rounded-lg">Details</a> <a href="{{ url_for('admin.download_dataset', dataset_id=dataset['_id']) }}" class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg">Download</a></td></tr>
+            {% else %}<tr><td colspan="6" class="p-8 text-center text-gray-400">No datasets uploaded yet.</td></tr>{% endfor %}
+            </tbody>
+        </table></div>
+    </div>
+</div>
+{% endblock %}

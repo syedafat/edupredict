@@ -1,0 +1,221 @@
+{% extends "auth_base.html" %}
+{% block title %}Create Account — EduPredict{% endblock %}
+
+{% block content %}
+<div class="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-gray-50/50">
+    <div class="max-w-4xl w-full bg-white rounded-3xl shadow-xl border border-gray-100 grid grid-cols-1 lg:grid-cols-2 overflow-hidden">
+
+        <!-- Left Hero Section -->
+        <div class="bg-gradient-to-br from-[#F8FAFC] via-[#EEF2FF] to-[#E0E7FF] p-8 lg:p-10 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center space-x-3">
+                    <div class="w-11 h-11 rounded-2xl bg-[#4F46E5] text-white flex items-center justify-center text-lg shadow-md shadow-[#4F46E5]/30">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <span class="text-lg font-bold text-[#252525] tracking-tight">EduPredict</span>
+                </div>
+
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-[#252525] tracking-tight mt-6 leading-tight">
+                    Join the Future of <br>
+                    <span class="text-[#4F46E5]">Predictive Education.</span>
+                </h1>
+
+                <p class="text-xs sm:text-sm text-gray-600 mt-3 leading-relaxed">
+                    Register your profile to access machine learning analytics and educational performance tracks.
+                </p>
+            </div>
+
+            <div class="pt-6 mt-6 border-t border-gray-200/60 flex items-center justify-between text-[11px] text-gray-500 font-medium">
+                <span>
+                    <i class="fa-solid fa-lock text-[#4F46E5] mr-1"></i>
+                    Secure Access
+                </span>
+                <span>
+                    <i class="fa-solid fa-user-shield text-[#4F46E5] mr-1"></i>
+                    Secure Registration
+                </span>
+            </div>
+        </div>
+
+        <!-- Right Form Section -->
+        <div class="p-8 lg:p-10 flex flex-col justify-center bg-white">
+
+            <div class="mb-5">
+                <h2 class="text-xl sm:text-2xl font-bold text-[#252525] tracking-tight">
+                    Create Account
+                </h2>
+
+                <p class="text-xs text-gray-500 mt-1">
+                    Enter your details to register.
+                </p>
+            </div>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="space-y-2 mb-4">
+                        {% for category, message in messages %}
+                            <div class="p-3 rounded-xl text-xs
+                                {% if category == 'success' %}
+                                    bg-green-50 text-green-700 border border-green-200
+                                {% elif category == 'danger' %}
+                                    bg-red-50 text-red-700 border border-red-200
+                                {% elif category == 'warning' %}
+                                    bg-yellow-50 text-yellow-700 border border-yellow-200
+                                {% else %}
+                                    bg-blue-50 text-blue-700 border border-blue-200
+                                {% endif %}
+                            ">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <form
+                method="POST"
+                action="{{ url_for('auth.register') }}"
+                class="space-y-3"
+            >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="space-y-1">
+                    <label
+                        for="name"
+                        class="text-[11px] font-bold text-[#252525] uppercase tracking-wider"
+                    >
+                        Full Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        required
+                        maxlength="100"
+                        autocomplete="name"
+                        class="w-full px-4 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/50 focus:bg-white transition"
+                        placeholder="John Doe"
+                    >
+                </div>
+
+                <div class="space-y-1">
+                    <label
+                        for="email"
+                        class="text-[11px] font-bold text-[#252525] uppercase tracking-wider"
+                    >
+                        Email Address
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        required
+                        autocomplete="email"
+                        maxlength="254"
+                        class="w-full px-4 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/50 focus:bg-white transition"
+                        placeholder="john@edupredict.edu"
+                    >
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                    <div class="space-y-1">
+                        <label
+                            for="password"
+                            class="text-[11px] font-bold text-[#252525] uppercase tracking-wider"
+                        >
+                            Password
+                        </label>
+
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            required
+                            minlength="8"
+                            autocomplete="new-password"
+                            class="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/50 focus:bg-white transition"
+                            placeholder="••••••••"
+                        >
+                    </div>
+
+                    <div class="space-y-1">
+                        <label
+                            for="confirm_password"
+                            class="text-[11px] font-bold text-[#252525] uppercase tracking-wider"
+                        >
+                            Confirm Password
+                        </label>
+
+                        <input
+                            type="password"
+                            id="confirm_password"
+                            name="confirm_password"
+                            required
+                            minlength="8"
+                            autocomplete="new-password"
+                            class="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/50 focus:bg-white transition"
+                            placeholder="••••••••"
+                        >
+                    </div>
+
+                </div>
+
+                <!-- Public registration is student only -->
+                <input type="hidden" name="role" value="student">
+
+                <p class="text-[11px] text-gray-500">
+                    New public accounts are registered as Student accounts.
+                </p>
+
+                <button
+                    type="submit"
+                    class="w-full py-3 bg-[#4F46E5] hover:bg-[#6366F1] text-white text-xs font-bold rounded-xl shadow-lg shadow-[#4F46E5]/20 transition duration-200 flex items-center justify-center space-x-2 mt-2"
+                >
+                    <span>Register Account</span>
+                    <i class="fa-solid fa-user-plus text-[10px]"></i>
+                </button>
+
+                <p class="text-center text-xs text-gray-500 pt-2">
+                    Already have an account?
+
+                    <a
+                        href="{{ url_for('auth.login') }}"
+                        class="text-[#4F46E5] font-bold hover:underline"
+                    >
+                        Sign In
+                    </a>
+                </p>
+
+            </form>
+
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const form = document.querySelector('form');
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirm_password');
+
+    form.addEventListener('submit', function (event) {
+        if (password.value !== confirmPassword.value) {
+            event.preventDefault();
+            confirmPassword.setCustomValidity('Passwords do not match.');
+            confirmPassword.reportValidity();
+        } else {
+            confirmPassword.setCustomValidity('');
+        }
+    });
+
+    confirmPassword.addEventListener('input', function () {
+        if (password.value === confirmPassword.value) {
+            confirmPassword.setCustomValidity('');
+        }
+    });
+</script>
+{% endblock %}

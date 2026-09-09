@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Faculty Directory — EduPredict{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between bg-white p-6 rounded-2xl border border-gray-200">
+        <div><h1 class="text-2xl font-bold">Faculty & Instructor Directory</h1><p class="text-xs text-gray-500 mt-1">Approve registrations and manage teaching staff.</p></div>
+        <a href="{{ url_for('admin.add_teacher') }}" class="px-4 py-2 bg-[#4F46E5] text-white text-xs font-semibold rounded-xl">Register Instructor</a>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div class="p-5 border-b border-gray-100"><h3 class="font-bold">Faculty Roster · {{ teachers|length }} records</h3></div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-xs">
+            <thead class="bg-gray-50 text-gray-500 uppercase"><tr><th class="p-4">Name</th><th class="p-4">Email</th><th class="p-4">Department</th><th class="p-4">Courses</th><th class="p-4">Status</th><th class="p-4 text-right">Actions</th></tr></thead>
+            <tbody class="divide-y divide-gray-100">
+            {% for teacher in teachers %}
+            <tr><td class="p-4 font-bold">{{ teacher.get('name', '—') }}</td><td class="p-4">{{ teacher.get('email', '—') }}</td><td class="p-4">{{ teacher.get('department', '—') }}</td><td class="p-4">{{ teacher.get('course_count', 0) }}</td><td class="p-4">{{ teacher.get('status', 'pending')|capitalize }}</td><td class="p-4 text-right">
+                {% if teacher.get('status') == 'pending' %}
+                <form method="POST" action="{{ url_for('admin.update_teacher_status', teacher_id=teacher['_id']) }}" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="approved"><button class="px-3 py-1 bg-teal-100 text-teal-700 rounded-lg">Approve</button></form>
+                <form method="POST" action="{{ url_for('admin.update_teacher_status', teacher_id=teacher['_id']) }}" class="inline ml-1"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="rejected"><button class="px-3 py-1 bg-red-100 text-red-700 rounded-lg">Reject</button></form>
+                {% else %}<a href="{{ url_for('admin.edit_user', id=teacher['_id']) }}" class="px-3 py-1 bg-gray-100 rounded-lg">Edit</a>{% endif %}
+            </td></tr>
+            {% else %}<tr><td colspan="6" class="p-8 text-center text-gray-400">No teachers registered.</td></tr>{% endfor %}
+            </tbody>
+        </table></div>
+    </div>
+</div>
+{% endblock %}

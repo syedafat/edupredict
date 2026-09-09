@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}My Notifications — EduPredict{% endblock %}
+{% block content %}
+<div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6"><h1 class="text-2xl font-bold">My Notifications</h1><div class="mt-4 space-y-3">{% for item in notifications %}<div class="p-4 rounded-xl border {% if item.get('is_read') %}border-slate-100{% else %}border-indigo-200 bg-indigo-50{% endif %}"><p class="font-semibold text-sm">{{ item.get('title', 'Notification') }}</p><p class="text-xs text-slate-600 mt-1">{{ item.get('message', '') }}</p><p class="text-[11px] text-slate-400 mt-2">{{ item.get('created_at', '—') }}</p></div>{% else %}<p class="text-sm text-slate-400">No notifications.</p>{% endfor %}</div></div>
+{% endblock %}

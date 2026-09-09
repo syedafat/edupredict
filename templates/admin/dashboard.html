@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard - EduPredict{% endblock %}
+{% block content %}
+<div class="max-w-[1600px] mx-auto space-y-6" data-dashboard-root>
+    <section class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-indigo-600"><span class="h-2 w-2 rounded-full bg-teal-500"></span>Platform control center</div>
+            <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-950 dark:text-white">Admin Dashboard</h1>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Centralized management and predictive intelligence overview.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <div class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900"><span class="font-semibold text-slate-700 dark:text-slate-200">Last sync</span> <span data-last-sync>{{ dashboard_data.generated_at }}</span></div>
+            <button type="button" data-refresh-dashboard class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-700"><i class="fa-solid fa-arrows-rotate" data-refresh-icon></i> Refresh</button>
+            <a href="{{ url_for('admin.reports') }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"><i class="fa-solid fa-file-export"></i> Export report</a>
+        </div>
+    </section>
+
+    <div data-dashboard-message class="hidden rounded-xl border px-4 py-3 text-sm" role="status"></div>
+
+    <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Platform metrics">
+        {% set kpis = [('students', 'Total students', 'fa-user-graduate', 'indigo', url_for('admin.students')), ('teachers', 'Total teachers', 'fa-person-chalkboard', 'sky', url_for('admin.teachers')), ('courses', 'Active courses', 'fa-book-open', 'violet', url_for('admin.courses')), ('datasets', 'Datasets', 'fa-database', 'amber', url_for('admin.datasets')), ('at_risk', 'High-risk students', 'fa-triangle-exclamation', 'rose', url_for('admin.predictions')), ('average_performance', 'Average performance', 'fa-chart-line', 'emerald', url_for('admin.predictions')), ('average_attendance', 'Average attendance', 'fa-calendar-check', 'teal', url_for('admin.students')), ('active_models', 'Active ML models', 'fa-brain', 'fuchsia', url_for('admin.ml_models'))] %}
+        {% for key, label, icon, color, href in kpis %}
+        <a href="{{ href }}" class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-start justify-between"><span class="flex h-10 w-10 items-center justify-center rounded-xl bg-{{ color }}-50 text-{{ color }}-600 dark:bg-{{ color }}-950/40 dark:text-{{ color }}-300"><i class="fa-solid {{ icon }}"></i></span><i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-300 transition group-hover:text-indigo-500"></i></div>
+            <p class="mt-4 text-xs font-bold uppercase tracking-wide text-slate-400">{{ label }}</p>
+            <p class="mt-1 text-2xl font-black text-slate-950 dark:text-white" data-kpi="{{ key }}">{% set value = dashboard_data.stats[key] %}{{ (value ~ '%') if value is not none and key in ['average_performance', 'average_attendance'] else (value if value is not none else '-') }}</p>
+            <p class="mt-1 text-xs text-slate-400">Live from operational data</p>
+        </a>
+        {% endfor %}
+    </section>
+
+    <section class="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_1fr]">
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex flex-wrap items-start justify-between gap-3"><div><h2 class="text-lg font-black text-slate-950 dark:text-white">Operational workflow</h2><p class="mt-1 text-sm text-slate-500">Move from source data to intervention without leaving the control center.</p></div><span class="rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-teal-700 dark:bg-teal-950/40 dark:text-teal-300">RBAC protected</span></div>
+            <div class="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+                {% for title, detail, icon, href in [('Ingest', 'Upload datasets', 'fa-cloud-arrow-up', url_for('admin.upload_data')), ('Process', 'Validate and clean', 'fa-gears', url_for('data.processing')), ('Analyze', 'Explore signals', 'fa-chart-column', url_for('admin.predictions')), ('Predict', 'Manage models', 'fa-brain', url_for('admin.ml_models'))] %}
+                <a href="{{ href }}" class="rounded-xl border border-slate-100 bg-slate-50 p-4 transition hover:border-indigo-200 hover:bg-indigo-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-indigo-950/30"><i class="fa-solid {{ icon }} text-indigo-600"></i><p class="mt-3 text-sm font-bold text-slate-800 dark:text-slate-100">{{ title }}</p><p class="mt-1 text-xs text-slate-500">{{ detail }}</p></a>
+                {% endfor %}
+            </div>
+            {% if dashboard_data.stats.pending_teachers %}<a href="{{ url_for('admin.teachers') }}" class="mt-5 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"><span><i class="fa-solid fa-user-clock mr-2"></i>{{ dashboard_data.stats.pending_teachers }} teacher approval request{{ '' if dashboard_data.stats.pending_teachers == 1 else 's' }}</span><i class="fa-solid fa-chevron-right text-xs"></i></a>{% endif %}
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-center justify-between"><div><h2 class="text-lg font-black text-slate-950 dark:text-white">Service health</h2><p class="mt-1 text-sm text-slate-500">Core dependencies and model readiness.</p></div><i class="fa-solid fa-heart-pulse text-teal-500"></i></div>
+            <div class="mt-5 divide-y divide-slate-100 dark:divide-slate-800">
+                {% for name, service in dashboard_data.services.items() %}<div class="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"><div class="min-w-0"><p class="text-sm font-bold text-slate-800 dark:text-slate-100">{{ name }}</p><p class="truncate text-xs text-slate-400">{{ service.detail }}</p></div><span class="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold {{ 'bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300' if service.status == 'Healthy' else 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' }}">{{ service.status }}</span></div>{% endfor %}
+            </div>
+            <a href="{{ url_for('admin.system_logs') }}" class="mt-5 inline-flex items-center gap-2 text-xs font-bold text-indigo-600 hover:text-indigo-700">Open monitoring and logs <i class="fa-solid fa-arrow-right"></i></a>
+        </div>
+    </section>
+
+    <section class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div class="flex items-center justify-between"><h2 class="text-lg font-black text-slate-950 dark:text-white">Recent alerts</h2><a href="{{ url_for('admin.anomalies') }}" class="text-xs font-bold text-indigo-600">View all</a></div><div class="mt-4 divide-y divide-slate-100 dark:divide-slate-800">{% for alert in dashboard_data.recent_alerts %}<div class="flex items-start gap-3 py-3 first:pt-0"><span class="mt-1 h-2 w-2 shrink-0 rounded-full bg-red-500"></span><div class="min-w-0"><p class="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{{ alert.get('title', alert.get('message', 'Operational alert')) }}</p><p class="mt-1 text-xs text-slate-400">{{ alert.get('severity', 'Review required') }} · {{ alert.get('created_at', '') }}</p></div></div>{% else %}<p class="py-4 text-sm text-slate-400">No unresolved alerts. The platform is quiet.</p>{% endfor %}</div></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div class="flex items-center justify-between"><h2 class="text-lg font-black text-slate-950 dark:text-white">Recent activity</h2><a href="{{ url_for('admin.system_logs') }}" class="text-xs font-bold text-indigo-600">Audit logs</a></div><div class="mt-4 divide-y divide-slate-100 dark:divide-slate-800">{% for log in dashboard_data.recent_logs %}<div class="flex items-start gap-3 py-3 first:pt-0"><span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[10px] text-slate-500 dark:bg-slate-800"><i class="fa-solid fa-clock-rotate-left"></i></span><div class="min-w-0"><p class="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{{ log.get('message', log.get('action', log.get('path', 'System event'))) }}</p><p class="mt-1 text-xs text-slate-400">{{ log.get('level', 'INFO') }} · {{ log.get('created_at', '') }}</p></div></div>{% else %}<p class="py-4 text-sm text-slate-400">No system activity recorded yet.</p>{% endfor %}</div></div>
+    </section>
+    <section class="grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr_1fr]">
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div class="flex items-center justify-between"><div><h2 class="text-lg font-black text-slate-950 dark:text-white">Platform signal mix</h2><p class="mt-1 text-sm text-slate-500">Current operational volume across the institution.</p></div><i class="fa-solid fa-chart-column text-indigo-600"></i></div><canvas id="adminSignalChart" class="mt-5 max-h-64"></canvas></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div class="flex items-center justify-between"><div><h2 class="text-lg font-black text-slate-950 dark:text-white">Risk posture</h2><p class="mt-1 text-sm text-slate-500">High-risk cases requiring review.</p></div><i class="fa-solid fa-shield-heart text-red-500"></i></div><div class="mt-8 flex items-center justify-center"><div class="relative flex h-40 w-40 items-center justify-center rounded-full" style="background: conic-gradient(#EF4444 {{ [dashboard_data.stats.at_risk * 2, 100]|min }}%, #E2E8F0 0)"><div class="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-white dark:bg-slate-900"><span class="text-3xl font-black text-slate-900 dark:text-white">{{ dashboard_data.stats.at_risk }}</span><span class="text-[10px] uppercase tracking-wide text-slate-400">high risk</span></div></div></div></div>
+    </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+new Chart(document.getElementById('adminSignalChart'), {type:'bar', data:{labels:['Students','Teachers','Courses','Datasets','At-risk'],datasets:[{data:[{{ dashboard_data.stats.students }},{{ dashboard_data.stats.teachers }},{{ dashboard_data.stats.courses }},{{ dashboard_data.stats.datasets }},{{ dashboard_data.stats.at_risk }}],backgroundColor:['#4F46E5','#6366F1','#14B8A6','#F59E0B','#EF4444'],borderRadius:8,barThickness:26}]}, options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}});
+</script>
+
+<script>
+(() => {
+    const root = document.querySelector('[data-dashboard-root]');
+    const button = root?.querySelector('[data-refresh-dashboard]');
+    const message = root?.querySelector('[data-dashboard-message]');
+    if (!root || !button) return;
+    const showMessage = (text, kind) => { message.textContent = text; message.className = `rounded-xl border px-4 py-3 text-sm ${kind === 'error' ? 'border-rose-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-teal-50 text-teal-700'}`; };
+    button.addEventListener('click', async () => {
+        button.disabled = true;
+        button.querySelector('[data-refresh-icon]')?.classList.add('fa-spin');
+        message.className = 'hidden rounded-xl border px-4 py-3 text-sm';
+        try {
+            const response = await fetch('{{ url_for("admin.dashboard_data") }}', { headers: { 'Accept': 'application/json' } });
+            if (!response.ok) throw new Error('Dashboard data could not be loaded.');
+            const payload = await response.json();
+            Object.entries(payload.stats || {}).forEach(([key, value]) => { const target = root.querySelector(`[data-kpi="${key}"]`); if (target) target.textContent = value === null ? '-' : `${value}${['average_performance', 'average_attendance'].includes(key) ? '%' : ''}`; });
+            const sync = root.querySelector('[data-last-sync]');
+            if (sync) sync.textContent = payload.generated_at || new Date().toISOString();
+            showMessage('Dashboard refreshed successfully.', 'success');
+        } catch (error) { showMessage(error.message || 'Unable to connect to the dashboard service. Try again.', 'error'); }
+        finally { button.disabled = false; button.querySelector('[data-refresh-icon]')?.classList.remove('fa-spin'); }
+    });
+})();
+</script>
+{% endblock %}

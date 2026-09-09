@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Upload Dataset — EduPredict{% endblock %}
+{% block content %}
+<div class="max-w-3xl space-y-6">
+    <div class="bg-white p-6 rounded-2xl border border-gray-200"><h1 class="text-2xl font-bold">Upload Dataset</h1><p class="text-xs text-gray-500 mt-1">The upload limit is {{ max_upload_mb }} MB. Supported formats: {{ allowed_dataset_extensions|join(', ') }}.</p></div>
+    <form method="POST" enctype="multipart/form-data" class="bg-white p-6 rounded-2xl border border-gray-200 space-y-5">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="block text-xs font-semibold">Dataset title<input name="title" class="mt-1 w-full px-3 py-2 border rounded-xl" placeholder="Optional display name"></label>
+        <label class="block text-xs font-semibold">Dataset type<select name="dataset_type" required class="mt-1 w-full px-3 py-2 border rounded-xl">{% for value in valid_dataset_types %}<option value="{{ value }}">{{ value|capitalize }}</option>{% endfor %}</select></label>
+        <label class="block text-xs font-semibold">Source file<input type="file" name="dataset_file" required class="mt-1 w-full px-3 py-2 border rounded-xl"></label>
+        <button class="px-5 py-2.5 bg-[#4F46E5] text-white text-xs font-semibold rounded-xl">Upload and open details</button>
+    </form>
+</div>
+{% endblock %}

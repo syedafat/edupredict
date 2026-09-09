@@ -1,0 +1,15 @@
+<aside id="student-sidebar" data-role-sidebar class="w-64 shrink-0 bg-slate-950 text-slate-300 transition-all duration-200" aria-label="Student navigation">
+    <div class="flex h-16 items-center gap-3 border-b border-slate-800 px-5"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500 text-white"><i class="fa-solid fa-graduation-cap"></i></span><div class="student-sidebar-label"><p class="font-black tracking-wide text-white">EduPredict</p><p class="text-[10px] uppercase tracking-[0.15em] text-slate-500">Student workspace</p></div></div>
+    <nav class="h-[calc(100vh-8rem)] overflow-y-auto p-3"><p class="student-sidebar-label mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">My academics</p>
+        {% set items = [('Dashboard', 'student.dashboard', 'fa-chart-pie'), ('My courses', 'student.courses', 'fa-book-open'), ('My performance', 'student.grades', 'fa-chart-line'), ('My attendance', 'student.attendance', 'fa-calendar-check'), ('My assignments', 'student.assignments', 'fa-clipboard-list'), ('AI predictions', 'student.predictions', 'fa-wand-magic-sparkles'), ('Alerts & notifications', 'student.notifications', 'fa-bell'), ('EduPredict insights', 'student.dashboard', 'fa-lightbulb'), ('Feedback & support', 'student.support', 'fa-headset'), ('My profile', 'student.profile', 'fa-user')] %}
+        {% for label, endpoint, icon in items %}<a href="{{ url_for(endpoint) }}" title="{{ label }}" class="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition {{ 'bg-indigo-500 text-white shadow-lg shadow-indigo-950/30' if request.endpoint == endpoint else 'text-slate-400 hover:bg-slate-900 hover:text-white' }}"><i class="fa-solid {{ icon }} w-5 text-center"></i><span class="student-sidebar-label">{{ label }}</span></a>{% endfor %}
+    </nav>
+    <div class="border-t border-slate-800 p-3"><a href="{{ url_for('auth.logout') }}" title="Logout" class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-950/40"><i class="fa-solid fa-right-from-bracket w-5 text-center"></i><span class="student-sidebar-label">Logout</span></a></div>
+</aside>
+
+<style>
+    #student-sidebar.is-collapsed { width: 4.5rem; }
+    #student-sidebar.is-collapsed .student-sidebar-label { display: none; }
+    #student-sidebar.is-collapsed > div:first-child { justify-content: center; padding-left: .75rem; padding-right: .75rem; }
+    @media (max-width: 767px) { #student-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 40; transform: translateX(-100%); } #student-sidebar.is-mobile-open { transform: translateX(0); } }
+</style>

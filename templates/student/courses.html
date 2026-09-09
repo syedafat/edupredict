@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}My Courses — EduPredict{% endblock %}
+{% block content %}
+<div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"><div class="p-6 border-b"><h1 class="text-2xl font-bold">My Courses</h1><p class="text-xs text-slate-500 mt-1">Current enrollments from MongoDB.</p></div><table class="w-full text-left text-xs"><thead class="bg-slate-50"><tr><th class="p-4">Code</th><th class="p-4">Title</th><th class="p-4">Department</th><th class="p-4">Credits</th><th class="p-4">Semester</th></tr></thead><tbody class="divide-y">{% for course in courses %}<tr><td class="p-4 font-mono">{{ course.get('code', '—') }}</td><td class="p-4 font-bold">{{ course.get('title', '—') }}</td><td class="p-4">{{ course.get('department', '—') }}</td><td class="p-4">{{ course.get('credits', 0) }}</td><td class="p-4">{{ course.get('semester', '—') }}</td></tr>{% else %}<tr><td colspan="5" class="p-8 text-center text-slate-400">No courses enrolled.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

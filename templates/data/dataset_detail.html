@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Dataset Details — EduPredict{% endblock %}
+{% block content %}
+<div class="max-w-5xl space-y-6">
+    <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800"><div class="flex items-center justify-between gap-4"><div><p class="text-xs text-slate-400 font-mono">Dataset {{ dataset_id }}</p><h1 class="text-2xl font-bold mt-1">{{ dataset.get('title', dataset.get('original_filename', 'Dataset')) }}</h1><p class="text-xs text-slate-500 mt-1">{{ dataset.get('original_filename', '—') }}</p></div><a href="{{ url_for('data.download_dataset', dataset_id=dataset_id) }}" class="px-4 py-2 bg-[#4F46E5] text-white text-xs rounded-xl">Download</a></div></div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">{% for label, value in [('Type', dataset.get('dataset_type', 'general')|capitalize), ('Format', dataset.get('extension', '—')|upper), ('File size', ((dataset.get('file_size', 0) / 1048576)|round(2)) ~ ' MB')] %}<div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800"><p class="text-xs uppercase text-slate-400">{{ label }}</p><h2 class="text-2xl font-bold mt-1">{{ value }}</h2></div>{% endfor %}</div>
+    <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 text-sm space-y-2"><p><strong>Uploaded:</strong> {{ dataset.get('uploaded_at', '—') }}</p><p><strong>Local status:</strong> {{ dataset.get('status', 'unknown')|capitalize }}</p><p><strong>HDFS status:</strong> {{ dataset.get('hdfs_status', 'unknown')|capitalize }}</p><p><strong>Uploader:</strong> {{ dataset.get('uploaded_by', '—') }}</p></div>
+</div>
+{% endblock %}

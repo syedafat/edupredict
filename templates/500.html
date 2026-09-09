@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}500 Server Error — EduPredict{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto text-center py-16 space-y-6">
+    <div class="w-20 h-20 mx-auto rounded-3xl bg-red-50 dark:bg-red-950/40 text-red-600 flex items-center justify-center text-3xl shadow-inner">
+        <i class="fa-solid fa-server"></i>
+    </div>
+    <div class="space-y-2">
+        <h1 class="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Internal Server Error</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">An unexpected error occurred while processing your request or syncing with HDFS.</p>
+    </div>
+    <div>
+        <a href="{{ url_for('auth.login') }}" class="px-6 py-3 bg-gradient-to-r from-indigo-600 to-[#4F46E5] text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 hover:opacity-95 transition-opacity inline-flex items-center">
+            <i class="fa-solid fa-house mr-2"></i> Return to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

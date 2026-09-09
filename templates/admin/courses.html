@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Courses — EduPredict{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between bg-white p-6 rounded-2xl border border-gray-200"><div><h1 class="text-2xl font-bold">Course Catalog</h1><p class="text-xs text-gray-500 mt-1">Create, assign, edit, and deactivate courses.</p></div><a href="{{ url_for('admin.create_course') }}" class="px-4 py-2 bg-[#4F46E5] text-white text-xs font-semibold rounded-xl">Add New Course</a></div>
+    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden"><div class="p-5 border-b border-gray-100"><h3 class="font-bold">Courses · {{ courses|length }} records</h3></div>
+    <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-gray-50 text-gray-500 uppercase"><tr><th class="p-4">Code</th><th class="p-4">Title</th><th class="p-4">Department</th><th class="p-4">Credits</th><th class="p-4">Teacher</th><th class="p-4">Status</th><th class="p-4 text-right">Actions</th></tr></thead><tbody class="divide-y divide-gray-100">
+    {% for course in courses %}<tr><td class="p-4 font-mono">{{ course.get('code', '—') }}</td><td class="p-4 font-bold">{{ course.get('title', '—') }}</td><td class="p-4">{{ course.get('department', '—') }}</td><td class="p-4">{{ course.get('credits', 0) }}</td><td class="p-4">{{ course.get('teacher_name', course.get('teacher_id', 'Unassigned')) }}</td><td class="p-4">{{ course.get('status', 'active')|capitalize }}</td><td class="p-4 text-right"><a href="{{ url_for('admin.edit_course', course_id=course['_id']) }}" class="px-3 py-1 bg-gray-100 rounded-lg">Edit</a><form method="POST" action="{{ url_for('admin.delete_course', course_id=course['_id']) }}" class="inline ml-1"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="px-3 py-1 bg-red-100 text-red-700 rounded-lg">Deactivate</button></form></td></tr>
+    {% else %}<tr><td colspan="7" class="p-8 text-center text-gray-400">No courses created yet.</td></tr>{% endfor %}
+    </tbody></table></div></div>
+</div>
+{% endblock %}

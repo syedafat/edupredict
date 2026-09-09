@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Analyst Dashboard — EduPredict{% endblock %}
+{% block content %}
+<div class="space-y-6">
+  <div class="flex items-start justify-between"><div><h1 class="text-2xl font-black">Analytics Workspace</h1><p class="text-xs text-slate-500 mt-1">Live aggregates from educational records, predictions and datasets.</p></div><a href="{{ url_for('analyst.data') }}" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs">JSON data</a></div>
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">{% for label, key in [('Students','students'),('Teachers','teachers'),('Datasets','datasets'),('Predictions','predictions'),('Attendance records','attendance_records')] %}<div class="bg-white p-5 rounded-2xl border"><p class="text-xs text-slate-400 uppercase">{{ label }}</p><p class="text-3xl font-black mt-2">{{ analytics.counts[key] }}</p></div>{% endfor %}</div>
+  <div class="grid lg:grid-cols-2 gap-6">
+    <div class="bg-white p-6 rounded-2xl border"><h2 class="font-bold">Dropout risk distribution</h2><canvas id="riskChart" class="mt-4" height="220"></canvas></div>
+    <div class="bg-white p-6 rounded-2xl border"><h2 class="font-bold">Attendance trend</h2><canvas id="attendanceChart" class="mt-4" height="220"></canvas></div>
+  </div>
+  <div class="bg-white p-6 rounded-2xl border"><div class="flex justify-between"><h2 class="font-bold">Course demand</h2><span class="text-xs text-slate-500">Average recorded score: {{ analytics.average_score if analytics.average_score is not none else '—' }}</span></div><div class="mt-4 space-y-3">{% for course in analytics.course_demand %}<div><div class="flex justify-between text-xs"><span>{{ course.code }} · {{ course.title }}</span><span class="font-bold">{{ course.enrollment }}</span></div><div class="h-2 bg-slate-100 rounded mt-1"><div class="h-2 bg-indigo-600 rounded" style="width: {{ [course.enrollment * 10, 100]|min }}%"></div></div></div>{% else %}<p class="text-sm text-slate-400">No course enrollment data.</p>{% endfor %}</div></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const analytics = {{ analytics|tojson }};
+new Chart(document.getElementById('riskChart'), {type:'doughnut', data:{labels:['Low','Medium','High'],datasets:[{data:[analytics.risk_counts.low,analytics.risk_counts.medium,analytics.risk_counts.high],backgroundColor:['#14B8A6','#F59E0B','#EF4444'],borderColor:'#FFFFFF',borderWidth:3}]}, options:{responsive:true,cutout:'72%',plugins:{legend:{position:'bottom'}}}});
+new Chart(document.getElementById('attendanceChart'), {type:'line', data:{labels:analytics.attendance_by_day.map(x=>x.date),datasets:[{label:'Present',data:analytics.attendance_by_day.map(x=>x.present),borderColor:'#14B8A6',backgroundColor:'rgba(20,184,166,.12)',fill:true,tension:.35},{label:'Absent',data:analytics.attendance_by_day.map(x=>x.absent),borderColor:'#EF4444',backgroundColor:'rgba(239,68,68,.08)',fill:false,tension:.35}]}, options:{responsive:true,scales:{y:{beginAtZero:true,grid:{color:'#E2E8F0'}},x:{grid:{display:false}}},plugins:{legend:{position:'bottom'}}}});
+</script>
+{% endblock %}

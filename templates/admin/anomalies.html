@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}Anomalies — EduPredict{% endblock %}
+{% block content %}
+<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden"><div class="p-6 border-b"><h1 class="text-2xl font-bold">Detected Anomalies</h1><p class="text-xs text-gray-500 mt-1">{{ anomalies|length }} records from the anomalies collection.</p></div><table class="w-full text-left text-xs"><thead class="bg-gray-50 text-gray-500 uppercase"><tr><th class="p-4">Student</th><th class="p-4">Type</th><th class="p-4">Score</th><th class="p-4">Created</th></tr></thead><tbody class="divide-y">{% for anomaly in anomalies %}<tr><td class="p-4 font-bold">{{ anomaly.get('student_id', '—') }}</td><td class="p-4">{{ anomaly.get('type', '—') }}</td><td class="p-4">{{ anomaly.get('score', '—') }}</td><td class="p-4">{{ anomaly.get('created_at', '—') }}</td></tr>{% else %}<tr><td colspan="4" class="p-8 text-center text-gray-400">No anomalies recorded.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}Predictions — EduPredict{% endblock %}
+{% block content %}
+<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden"><div class="p-6 border-b"><h1 class="text-2xl font-bold">Model Predictions</h1><p class="text-xs text-gray-500 mt-1">{{ predictions|length }} persisted prediction records.</p></div><table class="w-full text-left text-xs"><thead class="bg-gray-50 text-gray-500 uppercase"><tr><th class="p-4">Student</th><th class="p-4">Model</th><th class="p-4">Prediction / Risk</th><th class="p-4">Created</th></tr></thead><tbody class="divide-y">{% for prediction in predictions %}<tr><td class="p-4">{{ prediction.get('student_id', '—') }}</td><td class="p-4">{{ prediction.get('model_type', '—') }}</td><td class="p-4">{{ prediction.get('risk_score', prediction.get('prediction', '—')) }}</td><td class="p-4">{{ prediction.get('created_at', '—') }}</td></tr>{% else %}<tr><td colspan="4" class="p-8 text-center text-gray-400">No predictions recorded.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

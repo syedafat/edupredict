@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}My Attendance — EduPredict{% endblock %}
+{% block content %}
+<div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"><div class="p-6 border-b"><h1 class="text-2xl font-bold">My Attendance</h1></div><table class="w-full text-left text-xs"><thead class="bg-slate-50"><tr><th class="p-4">Date</th><th class="p-4">Course</th><th class="p-4">Status</th></tr></thead><tbody class="divide-y">{% for record in attendance_records %}<tr><td class="p-4">{{ record.get('date', '—') }}</td><td class="p-4">{{ record.get('course_code', record.get('course_id', '—')) }}</td><td class="p-4">{{ 'Present' if record.get('present') else 'Absent' }}</td></tr>{% else %}<tr><td colspan="3" class="p-8 text-center text-slate-400">No attendance records yet.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

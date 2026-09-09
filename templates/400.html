@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Request could not be completed - EduPredict</title>
+</head>
+<body>
+    <main style="font-family: sans-serif; max-width: 42rem; margin: 4rem auto; padding: 1rem;">
+        <h1>Request could not be completed</h1>
+        <p>{{ message or 'Please refresh the page and try again.' }}</p>
+        <a href="{{ url_for('auth.login') }}">Return to login</a>
+    </main>
+</body>
+</html>

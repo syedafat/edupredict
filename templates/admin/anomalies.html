@@ -1,5 +1,62 @@
 {% extends "base.html" %}
-{% block title %}Anomalies — EduPredict{% endblock %}
+{% block title %}Detected Anomalies — EduPredict{% endblock %}
 {% block content %}
-<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden"><div class="p-6 border-b"><h1 class="text-2xl font-bold">Detected Anomalies</h1><p class="text-xs text-gray-500 mt-1">{{ anomalies|length }} records from the anomalies collection.</p></div><table class="w-full text-left text-xs"><thead class="bg-gray-50 text-gray-500 uppercase"><tr><th class="p-4">Student</th><th class="p-4">Type</th><th class="p-4">Score</th><th class="p-4">Created</th></tr></thead><tbody class="divide-y">{% for anomaly in anomalies %}<tr><td class="p-4 font-bold">{{ anomaly.get('student_id', '—') }}</td><td class="p-4">{{ anomaly.get('type', '—') }}</td><td class="p-4">{{ anomaly.get('score', '—') }}</td><td class="p-4">{{ anomaly.get('created_at', '—') }}</td></tr>{% else %}<tr><td colspan="4" class="p-8 text-center text-gray-400">No anomalies recorded.</td></tr>{% endfor %}</tbody></table></div>
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 dark:border-slate-800 dark:bg-slate-900">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Academic Anomaly Intelligence</h1>
+            <p class="text-xs text-gray-500 mt-1">Unsupervised Isolation Forest detection identifying atypical student behavior and academic outliers.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs font-semibold">
+                <i class="fa-solid fa-triangle-exclamation"></i> Real-Time Anomaly Scanner Active
+            </span>
+        </div>
+    </div>
+
+    <!-- Anomalies Table -->
+    <div class="bg-white rounded-2xl border border-gray-200 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
+        <div class="p-5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+            <h3 class="font-bold text-sm text-gray-900 dark:text-white">Detected Anomalies · {{ anomalies|length }} records</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-gray-50 text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="p-4">Student</th>
+                        <th class="p-4">Anomaly Category</th>
+                        <th class="p-4">Severity Score</th>
+                        <th class="p-4 text-right">Detection Time</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
+                    {% for anomaly in anomalies %}
+                    <tr class="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition">
+                        <td class="p-4">
+                            <span class="font-bold text-gray-900 dark:text-white">{{ anomaly.student_name if anomaly.student_name is defined else anomaly.get('student_id', '—') }}</span>
+                            <span class="block font-mono text-[10px] text-gray-400">{{ anomaly.get('student_id', '—') }}</span>
+                        </td>
+                        <td class="p-4">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+                                <i class="fa-solid fa-triangle-exclamation text-[10px]"></i> {{ anomaly.get('type', 'Outlier Event') }}
+                            </span>
+                        </td>
+                        <td class="p-4 font-mono font-bold text-gray-800 dark:text-slate-200">
+                            {{ anomaly.get('score', -1) }}
+                        </td>
+                        <td class="p-4 text-right text-gray-500">
+                            {{ anomaly.get('created_at', '—') }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="p-8 text-center text-gray-400">No anomalies detected in the current academic dataset.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 {% endblock %}

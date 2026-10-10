@@ -6,10 +6,21 @@ from models import mongo
 from bson import ObjectId
 from services.alert_service import AlertService
 from services.hadoop_service import HadoopService
+from extensions import limiter
 
 data_bp = Blueprint('data', __name__, url_prefix='/data')
 
+
+def _dataset_query(dataset_id=None):
+    if dataset_id and not ObjectId.is_valid(dataset_id):
+        return {'_id': None}
+    query = {'_id': ObjectId(dataset_id)} if dataset_id else {}
+    if session.get('role') not in {'admin', 'analyst'}:
+        query['uploaded_by'] = session.get('user_id')
+    return query
+
 @data_bp.route('/upload', methods=['GET', 'POST'])
+@limiter.limit("10 per hour", methods=["POST"])
 @role_required('admin', 'teacher', 'analyst')
 def upload_dataset():
     if request.method == 'POST':
@@ -44,7 +55,7 @@ def upload_dataset():
 @role_required('admin', 'teacher', 'analyst')
 def dataset_detail(dataset_id):
     try:
-        dataset = mongo.db.datasets.find_one({'_id': ObjectId(dataset_id)})
+        dataset = mongo.db.datasets.find_one(_dataset_query(dataset_id))
     except Exception:
         abort(404)
     if not dataset:
@@ -56,7 +67,7 @@ def dataset_detail(dataset_id):
 @role_required('admin', 'teacher', 'analyst')
 def download_dataset(dataset_id):
     from flask import current_app, send_file
-    dataset = mongo.db.datasets.find_one({'_id': ObjectId(dataset_id)}) if ObjectId.is_valid(dataset_id) else None
+    dataset = mongo.db.datasets.find_one(_dataset_query(dataset_id))
     if not dataset:
         abort(404)
     path = os.path.abspath(dataset.get('file_path', ''))
@@ -68,7 +79,7 @@ def download_dataset(dataset_id):
 @data_bp.route('/processing', methods=['GET'])
 @role_required('admin', 'teacher', 'analyst')
 def processing():
-    datasets = list(mongo.db.datasets.find({}, {
+    datasets = list(mongo.db.datasets.find(_dataset_query(), {
         "original_filename": 1, "dataset_type": 1, "status": 1,
         "processing_summary": 1, "uploaded_at": 1, "hdfs_status": 1,
     }).sort("uploaded_at", -1).limit(100))
@@ -82,16 +93,31 @@ def streaming():
 
 
 @data_bp.route('/stream', methods=['POST'])
+@limiter.limit("120 per minute")
 @role_required('admin', 'teacher', 'analyst')
 def ingest_stream_event():
     from services.processing_service import ProcessingService
+    from services.academic_data_service import AcademicDataService
     payload = request.get_json(silent=True) or {}
     try:
+        if not isinstance(payload, dict) or not str(payload.get("student_id", "")).strip():
+            return jsonify({"status": "error", "message": "Stream event requires student_id."}), 400
+        student_id = str(payload.get("student_id", "")).strip()[:120]
+        user_id = session.get("user_id")
+        user_role = session.get("role")
+
+        if not AcademicDataService.is_user_authorized_for_student(user_id, user_role, student_id):
+            return jsonify({
+                "status": "error",
+                "message": "You are not authorized to submit events for this student."
+            }), 403
+
+        # Normalize/process only after the object-level authorization succeeds.
         event = ProcessingService.process_stream_event(payload)
-        event["ingested_by"] = session.get("user_id")
+        event["ingested_by"] = user_id
         mongo.db.stream_events.insert_one(event)
-        if event.get("student_id"):
-            AlertService.evaluate_student(event["student_id"])
+        if student_id:
+            AlertService.evaluate_student(student_id)
         return jsonify({"status": "success", "message": "Event accepted by the local stream processor."}), 201
     except ValueError as exc:
         return jsonify({"status": "error", "message": str(exc)}), 400

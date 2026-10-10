@@ -1,0 +1,14 @@
+{
+  "devDependencies": {
+    "@fontsource/dm-sans": "5.2.6",
+    "@fontsource/space-grotesk": "5.2.6",
+    "@fortawesome/fontawesome-free": "6.7.2",
+    "autoprefixer": "10.4.21",
+    "chart.js": "4.5.0",
+    "postcss": "8.5.6",
+    "tailwindcss": "3.4.17"
+  },
+  "scripts": {
+    "build:assets": "tailwindcss --config tailwind.config.cjs --input static/css/tailwind.input.css --output static/css/tailwind.css --minify && node scripts/build_frontend_assets.mjs"
+  }
+}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if department else 'Add' }} Department — EduPredict{% endblock %}
+{% block content %}
+<div class="max-w-2xl">
+    <form method="POST" class="bg-white p-6 rounded-2xl border border-gray-200 space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <h1 class="text-2xl font-bold">{{ 'Edit' if department else 'Add' }} Department</h1>
+        
+        <label class="block text-xs font-semibold">
+            Department Name <span class="text-red-500">*</span>
+            <input type="text" name="name" required value="{{ department.get('name', '') if department else '' }}" placeholder="e.g., Computer Science" class="mt-1 w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </label>
+        
+        <label class="block text-xs font-semibold">
+            Legacy Codes (comma-separated)
+            <input type="text" name="legacy_codes" value="{{ (department.get('legacy_codes', []) | join(', ')) if department else '' }}" placeholder="e.g., cs, se, cse" class="mt-1 w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <span class="block text-[11px] text-gray-400 font-normal mt-1">Used for backward compatibility with older student and course records.</span>
+        </label>
+        
+        <div class="pt-2 flex items-center gap-3">
+            <button type="submit" class="px-5 py-2.5 bg-[#4F46E5] text-white text-xs font-semibold rounded-xl hover:bg-indigo-600 transition">Save Department</button>
+            <a href="{{ url_for('admin.departments') }}" class="text-xs text-gray-500 hover:text-gray-700">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

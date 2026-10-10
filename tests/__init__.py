@@ -1,0 +1,1 @@
+"""EduPredict automated tests package."""

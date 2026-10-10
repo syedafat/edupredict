@@ -2,10 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Request could not be completed - EduPredict</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
 </head>
-<body>
-    <main style="font-family: sans-serif; max-width: 42rem; margin: 4rem auto; padding: 1rem;">
+<body class="error-shell">
+    <main>
         <h1>Request could not be completed</h1>
         <p>{{ message or 'Please refresh the page and try again.' }}</p>
         <a href="{{ url_for('auth.login') }}">Return to login</a>

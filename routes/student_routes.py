@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
+import os
 from statistics import mean
 
 from bson import ObjectId
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for, current_app, send_file
+from werkzeug.utils import secure_filename
 
 from models import mongo
 from utils.decorators import role_required
@@ -18,11 +20,7 @@ def _student_id():
 
 
 def _enrolled_courses():
-    student_id = _student_id()
-    enrolled_ids = [row.get("course_id") for row in AcademicDataService.active_enrollments(student_id=student_id) if row.get("course_id")]
-    object_ids = [ObjectId(value) for value in enrolled_ids if ObjectId.is_valid(str(value))]
-    courses = list(mongo.db.courses.find({"_id": {"$in": object_ids}, "status": {"$ne": "inactive"}})) if object_ids else []
-    return sorted(courses, key=lambda course: course.get("created_at") or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    return AcademicDataService.get_active_student_courses(_student_id())["courses"]
 
 
 def _owned_assignment(assignment_id, student_id=None):
@@ -48,7 +46,8 @@ def dashboard_data():
 def _student_dashboard_data():
     student_id = _student_id()
     student = _student_profile()
-    courses = _enrolled_courses()
+    course_result = AcademicDataService.get_active_student_courses(student_id)
+    courses = course_result["courses"]
     grades = list(mongo.db.grades.find({"student_id": student_id}, {"score": 1, "course_id": 1, "created_at": 1}).sort("created_at", -1).limit(5000))
     scores = [float(grade["score"]) for grade in grades if isinstance(grade.get("score"), (int, float))]
     attendance = list(mongo.db.attendance.find({"student_id": student_id}, {"present": 1, "date": 1}).sort("date", -1).limit(5000))
@@ -70,6 +69,7 @@ def _student_dashboard_data():
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "student": {"name": student.get("name", session.get("user_name", "Student")), "student_id": student.get("student_id", student_id), "department": student.get("department", "-"), "program": student.get("program", "-"), "semester": student.get("semester", "Current semester"), "academic_year": student.get("academic_year", str(datetime.now(timezone.utc).year))},
         "stats": stats,
+        "course_state": course_result["state"],
         "courses": [{"id": str(course["_id"]), "code": course.get("code", "-"), "title": course.get("title", "Untitled course"), "semester": course.get("semester", "-"), "credits": course.get("credits", 0)} for course in courses],
         "assignments": _serialize_student_documents(assignments),
         "predictions": {"performance": _serialize_student_document(performance_prediction), "dropout": _serialize_student_document(dropout_prediction)},
@@ -139,7 +139,8 @@ def attendance():
 @student_bp.route("/courses")
 @role_required("student")
 def courses():
-    return render_template("student/courses.html", courses=_enrolled_courses())
+    result = AcademicDataService.get_active_student_courses(_student_id())
+    return render_template("student/courses.html", courses=result["courses"], course_state=result["state"])
 
 
 @student_bp.route("/notifications")
@@ -182,21 +183,76 @@ def submit_assignment(assignment_id):
     if not enrolled:
         flash("You may only submit assignments for your active enrollments.", "danger")
         return redirect(url_for("student.assignments"))
+    # Optional text note
     content = request.form.get("content", "").strip()[:10000]
-    if not content:
-        flash("A submission cannot be empty.", "danger")
+    # Required ZIP file upload
+    submission_file = request.files.get("submission_file")
+    if not submission_file or submission_file.filename == "":
+        flash("A valid .zip project archive must be uploaded.", "danger")
+        return redirect(url_for("student.assignments"))
+    filename = secure_filename(submission_file.filename)
+    if not filename.lower().endswith('.zip'):
+        flash("Invalid file format. Only .zip archives are allowed for assignment submissions.", "danger")
+        return redirect(url_for("student.assignments"))
+    upload_folder = current_app.config.get("UPLOAD_FOLDER", os.path.join(os.getcwd(), "uploads"))
+    student_folder = os.path.join(upload_folder, _student_id())
+    os.makedirs(student_folder, exist_ok=True)
+    file_path = os.path.join(student_folder, f"{assignment['_id']}.zip")
+    submission_file.save(file_path)
+    # Verify the ZIP archive is valid
+    import zipfile
+    try:
+        with zipfile.ZipFile(file_path, 'r') as zip_ref:
+            bad_file = zip_ref.testzip()
+            if bad_file is not None:
+                raise zipfile.BadZipFile
+    except (zipfile.BadZipFile, Exception):
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        flash("Uploaded file is corrupted or not a valid ZIP archive.", "danger")
         return redirect(url_for("student.assignments"))
     now = datetime.now(timezone.utc)
+    file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
     mongo.db.submissions.update_one(
         {"assignment_id": str(assignment["_id"]), "student_id": _student_id()},
-        {"$set": {"content": content, "status": "submitted", "submitted_at": now, "assignment_title": assignment.get("title", "Assignment"), "course_id": str(assignment.get("course_id", ""))}, "$setOnInsert": {"created_at": now}},
+        {"$set": {
+            "content": content,
+            "file_path": file_path,
+            "filename": f"{assignment['_id']}.zip",
+            "original_filename": filename,
+            "file_type": "zip",
+            "file_size": file_size,
+            "has_valid_zip": True,
+            "status": "submitted",
+            "submitted_at": now,
+            "assignment_title": assignment.get("title", "Assignment"),
+            "course_id": str(assignment.get("course_id", ""))
+        },
+         "$setOnInsert": {"created_at": now}},
         upsert=True,
     )
     mongo.db.assignments.update_one({"_id": assignment["_id"]}, {"$set": {"status": "submitted", "updated_at": now}})
     AcademicDataService.refresh_student(_student_id(), changed_by=session["user_id"], reason="assignment_submitted", course_id=str(assignment.get("course_id", "")))
     AuditService.record("assignment_submitted", "submission", assignment["_id"], session["user_id"], session.get("role"))
-    flash("Assignment submitted.", "success")
+    flash("Assignment and ZIP project archive submitted successfully.", "success")
     return redirect(url_for("student.assignments"))
+
+
+@student_bp.route("/assignments/<assignment_id>/download")
+@role_required("student")
+def download_submission(assignment_id):
+    if not ObjectId.is_valid(assignment_id):
+        flash("Invalid assignment ID.", "danger")
+        return redirect(url_for("student.assignments"))
+    submission = mongo.db.submissions.find_one({"assignment_id": str(assignment_id), "student_id": _student_id()})
+    if not submission or not submission.get("file_path") or not os.path.isfile(submission["file_path"]):
+        flash("Submission file not found.", "warning")
+        return redirect(url_for("student.assignments"))
+    return send_file(
+        submission["file_path"],
+        as_attachment=True,
+        download_name=submission.get("original_filename") or f"{submission.get('assignment_title', 'assignment')}.zip"
+    )
 
 
 @student_bp.route("/profile")

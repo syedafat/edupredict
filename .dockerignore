@@ -1,0 +1,50 @@
+# Version control
+.git
+.gitignore
+node_modules/
+
+# Environment & local secrets
+.env
+.env.*
+secrets/
+local-credentials/
+*.pem
+*.key
+*.p12
+*.pfx
+*production*.conf
+*production*.yaml
+*production*.yml
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+docs/
+
+# Local data, storage, and models
+uploads/*
+!uploads/.gitkeep
+backups/
+
+# IDE & OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Documentation / Scratch
+scratch/

@@ -19,6 +19,7 @@ from werkzeug.security import (
 
 from pymongo.errors import DuplicateKeyError
 from extensions import limiter
+from services.email_service import EmailService
 
 from datetime import (
     datetime,
@@ -45,6 +46,15 @@ VALID_ROLES = {
     "student",
     "analyst",
 }
+
+STUDENT_REGISTRATION_ACK = (
+    "If an account can be created for this address, registration was received. "
+    "If you already have an account, please sign in."
+)
+TEACHER_REGISTRATION_ACK = (
+    "If a teacher account can be created for this address, registration was received. "
+    "Teacher accounts require administrator approval. If you already have an account, please sign in."
+)
 
 # ==================================================
 # HELPER FUNCTIONS
@@ -101,181 +111,101 @@ def get_dashboard_endpoint(role):
 @limiter.limit("5 per minute")
 def login():
     if request.method == "POST":
-        identifier = request.form.get(
-            "email",
-            request.form.get("username", "")
-        ).strip()
+        raw_identifier = request.form.get("email", request.form.get("username", "")) or ""
+        identifier = raw_identifier.strip()
         email = identifier.lower()
-
-        password = request.form.get(
-            "password",
-            ""
-        )
+        password = request.form.get("password", "")
 
         if not email or not password:
-            flash(
-                "Please enter both email and password.",
-                "danger"
-            )
-            return render_template(
-                "auth/login.html"
-            )
+            flash("Please enter both email and password.", "danger")
+            return render_template("auth/login.html")
 
+        # Database lookup by email or username
         user = mongo.db.users.find_one({
             "$or": [
                 {"email": email},
+                {"email": identifier},
                 {"username": identifier},
                 {"username": email},
             ]
         })
 
         if not user:
-            flash(
-                "Invalid email or password.",
-                "danger"
-            )
-            return render_template(
-                "auth/login.html"
-            )
+            flash("Invalid email or password.", "danger")
+            return render_template("auth/login.html")
 
-        # Supports both:
-        # password      -> normal registered users
-        # password_hash  -> admin seeded from .env
-        legacy_password = user.get("password")
-        stored_password = user.get("password_hash") or legacy_password or ""
+        user_id_str = str(user.get("_id"))
+        raw_role = str(user.get("role", "student")).strip().lower()
+        user_status = str(user.get("status", "approved")).strip().lower()
+        # Secure authentication: verify password hash only
+        stored_password_hash = user.get("password_hash")
+        password_matches = False
+        if stored_password_hash:
+            try:
+                password_matches = check_password_hash(stored_password_hash, password)
+            except Exception:
+                password_matches = False
+        # Legacy plaintext passwords are not accepted; authentication relies solely on hash verification.
 
-        if (
-            not stored_password
-            or not check_password_hash(
-                stored_password,
-                password
-            )
-        ):
-            flash(
-                "Invalid email or password.",
-                "danger"
-            )
-            return render_template(
-                "auth/login.html"
-            )
-        if legacy_password and not user.get("password_hash"):
-            mongo.db.users.update_one(
-                {"_id": user["_id"]},
-                {"$set": {"password_hash": legacy_password}, "$unset": {"password": ""}},
-            )
+        if not password_matches:
+            flash("Invalid email or password.", "danger")
+            return render_template("auth/login.html")
 
-        role = user.get(
-            "role",
-            "student"
-        )
-
-        if role not in VALID_ROLES:
+        # Normalize role
+        role = raw_role if raw_role in VALID_ROLES else "student"
+        if raw_role not in VALID_ROLES:
+            current_app.logger.debug(f"Invalid account role. Valid roles: {VALID_ROLES}")
             session.clear()
-            flash(
-                "Invalid account role. Please contact the administrator.",
-                "danger"
-            )
-            return redirect(
-                url_for("auth.login")
-            )
+            flash("Invalid account role. Please contact the administrator.", "danger")
+            return redirect(url_for("auth.login"))
 
-        # ==================================================
-        # TEACHER APPROVAL CHECK
-        # ==================================================
-
+        # Teacher approval check
         if role == "teacher":
-            teacher_status = user.get(
-                "status",
-                "pending"
-            )
+            current_app.logger.debug("Evaluating teacher status.")
+            if user_status == "pending":
+                current_app.logger.warning("Teacher login blocked: pending approval.")
+                flash("Your teacher account is waiting for admin approval.", "warning")
+                return redirect(url_for("auth.login"))
 
-            if teacher_status == "pending":
-                flash(
-                    "Your teacher account is waiting for admin approval.",
-                    "warning"
-                )
-                return redirect(
-                    url_for("auth.login")
-                )
+            if user_status == "rejected":
+                current_app.logger.warning("Teacher login blocked: rejected status.")
+                flash("Your teacher registration has been rejected by the administrator.", "danger")
+                return redirect(url_for("auth.login"))
 
-            if teacher_status == "rejected":
-                flash(
-                    "Your teacher registration has been rejected by the administrator.",
-                    "danger"
-                )
-                return redirect(
-                    url_for("auth.login")
-                )
+            if user_status not in {"approved", "active"}:
+                current_app.logger.warning(f"Teacher login blocked: status {user_status} unavailable.")
+                flash("Your teacher account is currently unavailable.", "danger")
+                return redirect(url_for("auth.login"))
 
-            if teacher_status != "approved":
-                flash(
-                    "Your teacher account is currently unavailable.",
-                    "danger"
-                )
-                return redirect(
-                    url_for("auth.login")
-                )
+        # Account status check (suspended or deleted)
+        if user_status in {"suspended", "deleted"}:
+            current_app.logger.warning(f"Account deactivated: status {user_status}")
+            flash("This account is currently unavailable.", "danger")
+            return render_template("auth/login.html")
 
-        # ==================================================
-        # ACCOUNT STATUS CHECK
-        # ==================================================
-
-        if user.get("status") in {
-            "suspended",
-            "deleted"
-        }:
-            flash(
-                "This account is currently unavailable.",
-                "danger"
-            )
-            return render_template(
-                "auth/login.html"
-            )
-
-        dashboard_endpoint = get_dashboard_endpoint(
-            role
-        )
-
+        dashboard_endpoint = get_dashboard_endpoint(role)
         if not dashboard_endpoint:
+            current_app.logger.warning(f"Could not determine dashboard endpoint for role {role}")
             session.clear()
-            flash(
-                "Unable to determine user dashboard.",
-                "danger"
-            )
-            return redirect(
-                url_for("auth.login")
-            )
+            flash("Unable to determine user dashboard.", "danger")
+            return redirect(url_for("auth.login"))
 
-        # Clear old session
+        # Setup user session
         session.clear()
-
-        session["user_id"] = str(
-            user["_id"]
-        )
+        session["user_id"] = user_id_str
         session["role"] = role
-        session["user_name"] = user.get(
-            "name",
-            "User"
-        )
+        session["user_name"] = user.get("name", "User")
+        session["logged_in"] = True
 
-        remember = (
-            request.form.get("remember")
-            == "true"
-        )
+        remember = request.form.get("remember") == "true"
         session.permanent = remember
 
-        flash(
-            "Logged in successfully.",
-            "success"
-        )
+        current_app.logger.debug("Session initialized and redirecting to dashboard.")
 
-        return redirect(
-            url_for(dashboard_endpoint)
-        )
+        flash("Logged in successfully.", "success")
+        return redirect(url_for(dashboard_endpoint))
 
-    return render_template(
-        "auth/login.html"
-    )
+    return render_template("auth/login.html")
 
 # ==================================================
 # STUDENT REGISTER
@@ -285,6 +215,7 @@ def login():
     "/register",
     methods=["GET", "POST"]
 )
+@limiter.limit("10 per hour", methods=["POST"])
 def register():
     if request.method == "POST":
         name = request.form.get(
@@ -369,7 +300,7 @@ def register():
         user_data = {
             "name": name,
             "email": email,
-            "password": hashed_password,
+            "password_hash": hashed_password,
             "role": role,
             "department": department,
             "status": "approved",
@@ -384,16 +315,16 @@ def register():
             )
         except DuplicateKeyError:
             flash(
-                "Email already registered. Please log in.",
-                "warning"
+                STUDENT_REGISTRATION_ACK,
+                "info"
             )
             return redirect(
                 url_for("auth.login")
             )
 
         flash(
-            "Student account created successfully. Please log in.",
-            "success"
+            STUDENT_REGISTRATION_ACK,
+            "info"
         )
 
         return redirect(
@@ -412,6 +343,7 @@ def register():
     "/teacher/register",
     methods=["GET", "POST"]
 )
+@limiter.limit("10 per hour", methods=["POST"])
 def teacher_register():
     if request.method == "POST":
         name = request.form.get(
@@ -493,7 +425,7 @@ def teacher_register():
         teacher_data = {
             "name": name,
             "email": email,
-            "password": hashed_password,
+            "password_hash": hashed_password,
             "role": "teacher",
             "department": department,
             # IMPORTANT:
@@ -510,16 +442,15 @@ def teacher_register():
             )
         except DuplicateKeyError:
             flash(
-                "Email already registered.",
-                "warning"
+                TEACHER_REGISTRATION_ACK,
+                "info"
             )
             return redirect(
                 url_for("auth.login")
             )
 
         flash(
-            "Teacher registration submitted successfully. "
-            "Please wait for admin approval.",
+            TEACHER_REGISTRATION_ACK,
             "info"
         )
 
@@ -575,20 +506,37 @@ def forgot_password():
                     )
                 )
 
-                mongo.db.users.update_one(
-                    {
-                        "_id": user["_id"]
-                    },
-                    {
-                        "$set": {
-                            "reset_token_hash": token_hash,
-                            "reset_token_expiry": expiry
+                try:
+                    mongo.db.users.update_one(
+                        {
+                            "_id": user["_id"]
+                        },
+                        {
+                            "$set": {
+                                "reset_token_hash": token_hash,
+                                "reset_token_expiry": expiry
+                            }
                         }
-                    }
-                )
-                if current_app.config.get("PASSWORD_RESET_EXPOSE_LINK", False):
-                    reset_url = url_for("auth.reset_password", token=reset_token, _external=True)
-                    flash(f"Development reset link: {reset_url}", "warning")
+                    )
+                    if current_app.config.get("PASSWORD_RESET_EXPOSE_LINK", False):
+                        reset_url = url_for("auth.reset_password", token=reset_token, _external=True)
+                        flash(f"Development reset link: {reset_url}", "warning")
+                    else:
+                        reset_base_url = current_app.config.get("PASSWORD_RESET_BASE_URL", "").rstrip("/")
+                        reset_path = url_for("auth.reset_password", token=reset_token)
+                        reset_url = f"{reset_base_url}{reset_path}" if reset_base_url else url_for(
+                            "auth.reset_password", token=reset_token, _external=True
+                        )
+                        EmailService.send_password_reset(email, reset_url)
+                except Exception:
+                    try:
+                        mongo.db.users.update_one(
+                            {"_id": user["_id"], "reset_token_hash": token_hash},
+                            {"$unset": {"reset_token_hash": "", "reset_token_expiry": ""}},
+                        )
+                    except Exception:
+                        pass
+                    current_app.logger.warning("Password reset delivery failed; no reset token was returned.")
 
         flash(
             generic_message,
@@ -611,6 +559,7 @@ def forgot_password():
     "/reset-password",
     methods=["GET", "POST"]
 )
+@limiter.limit("10 per hour", methods=["POST"])
 def reset_password():
     token = request.args.get(
         "token",
@@ -693,10 +642,11 @@ def reset_password():
             },
             {
                 "$set": {
-                    "password": new_password_hash,
+                    "password_hash": new_password_hash,
                     "password_changed_at": now
                 },
                 "$unset": {
+                    "password": "",
                     "reset_token_hash": "",
                     "reset_token_expiry": ""
                 }
@@ -724,7 +674,7 @@ def reset_password():
 # LOGOUT
 # ==================================================
 
-@auth_bp.route("/logout")
+@auth_bp.route("/logout", methods=["POST"])
 def logout():
     session.clear()
 

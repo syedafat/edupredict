@@ -1,5 +1,52 @@
 {% extends "base.html" %}
 {% block title %}My Courses — EduPredict{% endblock %}
 {% block content %}
-<div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"><div class="p-6 border-b"><h1 class="text-2xl font-bold">My Courses</h1><p class="text-xs text-slate-500 mt-1">Current enrollments from MongoDB.</p></div><table class="w-full text-left text-xs"><thead class="bg-slate-50"><tr><th class="p-4">Code</th><th class="p-4">Title</th><th class="p-4">Department</th><th class="p-4">Credits</th><th class="p-4">Semester</th></tr></thead><tbody class="divide-y">{% for course in courses %}<tr><td class="p-4 font-mono">{{ course.get('code', '—') }}</td><td class="p-4 font-bold">{{ course.get('title', '—') }}</td><td class="p-4">{{ course.get('department', '—') }}</td><td class="p-4">{{ course.get('credits', 0) }}</td><td class="p-4">{{ course.get('semester', '—') }}</td></tr>{% else %}<tr><td colspan="5" class="p-8 text-center text-slate-400">No courses enrolled.</td></tr>{% endfor %}</tbody></table></div>
+<div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <div class="p-6 border-b">
+        <h1 class="text-2xl font-bold">My Courses</h1>
+        <p class="text-xs text-slate-500 mt-1">Current active enrollments.</p>
+    </div>
+    <table class="w-full text-left text-xs">
+        <thead class="bg-slate-50">
+            <tr>
+                <th class="p-4">Code</th>
+                <th class="p-4">Title</th>
+                <th class="p-4">Department</th>
+                <th class="p-4">Subjects</th>
+                <th class="p-4">Credits</th>
+                <th class="p-4">Semester</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y">
+            {% for course in courses %}
+            <tr>
+                <td class="p-4 font-mono">{{ course.get('code', '—') }}</td>
+                <td class="p-4 font-bold">{{ course.get('title', '—') }}</td>
+                <td class="p-4">{{ course.get('department', '—') }}</td>
+                <td class="p-4">
+                    {% if course.get('subjects') %}
+                        <div class="flex flex-wrap gap-1">
+                            {% for subject in course.get('subjects', []) %}
+                            <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200" title="{{ subject.get('name', 'Subject') }}">
+                                {{ subject.get('code', subject.get('name', 'Subject')) }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <span class="text-slate-400 italic text-[11px]">No specific subjects</span>
+                    {% endif %}
+                </td>
+                <td class="p-4">{{ course.get('credits', 0) }}</td>
+                <td class="p-4">{{ course.get('semester', '—') }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="p-8 text-center text-slate-400">
+                    {% if course_state == 'inactive_student' %}Your account is currently inactive. Please contact the administrator.{% elif course_state == 'inactive_courses' %}Your course enrollment is waiting for course activation.{% else %}You are not enrolled in any courses yet.{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}

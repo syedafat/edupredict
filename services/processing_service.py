@@ -147,8 +147,8 @@ class ProcessingService:
             })
             return {"success": True, **summary}
         except Exception as exc:
-            current_app.logger.exception("Dataset processing failed for %s", file_path)
-            return {"success": False, "error": str(exc)}
+            current_app.logger.error("Dataset processing failed (error type: %s).", type(exc).__name__)
+            return {"success": False, "error": "The dataset could not be processed."}
 
     @staticmethod
     def process_stream_event(event):

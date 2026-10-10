@@ -2,45 +2,30 @@
 <html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}EduPredict{% endblock %}</title>
-    <!-- Tailwind CSS & Icons CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            DEFAULT: '#F8FAFC',
-                            dark: '#0F172A'
-                        }
-                    }
-                }
+    <script nonce="{{ csp_nonce }}">
+        (() => {
+            try {
+                const savedTheme = localStorage.getItem('edupredict-theme');
+                const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+                document.documentElement.classList.toggle('dark', savedTheme === 'dark' || (savedTheme !== 'light' && prefersDark));
+            } catch (error) {
+                document.documentElement.classList.toggle('dark', window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
             }
-        }
+        })();
     </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root { --navy: #0F172A; --primary: #4F46E5; --indigo: #6366F1; --teal: #14B8A6; --amber: #F59E0B; --danger: #EF4444; --canvas: #F8FAFC; --surface: #FFFFFF; --ink: #1E293B; --muted: #64748B; --line: #E2E8F0; }
-        html { font-family: 'DM Sans', sans-serif; }
-        h1, h2, h3, .font-bold, .font-extrabold { font-family: 'Space Grotesk', 'DM Sans', sans-serif; }
-        body { background: var(--canvas); color: var(--ink); }
-        [class~="bg-indigo-600"], [class~="bg-[#4F46E5]"], [class*="from-indigo-600"], [class*="to-[#4F46E5]"] { background-color: var(--primary) !important; background-image: none !important; }
-        [class~="hover:bg-[#6366F1]"]:hover, [class~="hover:opacity-95"]:hover { background-color: var(--indigo) !important; opacity: 1 !important; }
-        [class~="text-indigo-600"], [class~="text-[#4F46E5]"], [class~="text-indigo-700"] { color: var(--primary) !important; }
-        [class~="bg-indigo-50"] { background-color: #EEF2FF !important; }
-        [class~="text-gray-400"], [class~="text-gray-500"], [class~="text-gray-600"], [class~="text-[#252525]"] { color: var(--muted) !important; }
-        input, select, textarea { border-color: var(--line); color: var(--ink); background: var(--surface); }
-        input:focus, select:focus, textarea:focus { border-color: var(--primary) !important; box-shadow: 0 0 0 3px rgba(79, 70, 229, .14) !important; outline: none; }
-        ::selection { background: #C7D2FE; color: #312E81; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
+    <script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>
 </head>
-<body class="h-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans antialiased transition-colors duration-200">
-
+<body class="auth-shell h-full bg-slate-50 text-slate-900 font-sans antialiased">
+    <button type="button" data-theme-toggle aria-pressed="false" class="fixed right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" title="Switch to dark mode" aria-label="Switch to dark mode">
+        <i class="fa-solid fa-moon text-sm" data-theme-icon="light"></i>
+        <i class="fa-solid fa-sun hidden text-sm" data-theme-icon="dark"></i>
+    </button>
     {% block content %}{% endblock %}
 
 </body>

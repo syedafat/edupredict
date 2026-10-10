@@ -3,6 +3,7 @@ from utils.decorators import role_required
 from models import mongo
 from bson import ObjectId
 from datetime import datetime, timezone
+from extensions import limiter
 
 notification_bp = Blueprint('notifications', __name__, url_prefix='/notifications')
 
@@ -41,6 +42,7 @@ def mark_read(notification_id):
     return jsonify({'status': 'success', 'message': 'Notification marked as read.'})
 
 @notification_bp.route('/broadcast', methods=['GET', 'POST'])
+@limiter.limit("10 per hour", methods=["POST"])
 @role_required('admin', 'teacher')
 def broadcast():
     """Broadcast an institutional notice to users"""

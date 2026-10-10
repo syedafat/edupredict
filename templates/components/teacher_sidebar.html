@@ -4,12 +4,5 @@
         {% set items = [('Dashboard', 'teacher.dashboard', 'fa-chart-pie'), ('My students', 'teacher.student_performance', 'fa-user-graduate'), ('My courses', 'teacher.courses', 'fa-book-open'), ('Submissions', 'teacher.submissions', 'fa-clipboard-check'), ('Predictions', 'ml.view_predictions', 'fa-chart-line'), ('Alerts & notifications', 'notifications.list_notifications', 'fa-bell'), ('Feedback & support', 'support.list_tickets', 'fa-headset')] %}
         {% for label, endpoint, icon in items %}<a href="{{ url_for(endpoint) }}" title="{{ label }}" class="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition {{ 'bg-indigo-500 text-white shadow-lg shadow-indigo-950/30' if request.endpoint == endpoint else 'text-slate-400 hover:bg-slate-900 hover:text-white' }}"><i class="fa-solid {{ icon }} w-5 text-center"></i><span class="teacher-sidebar-label">{{ label }}</span></a>{% endfor %}
     </nav>
-    <div class="border-t border-slate-800 p-3"><a href="{{ url_for('auth.logout') }}" title="Logout" class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-950/40"><i class="fa-solid fa-right-from-bracket w-5 text-center"></i><span class="teacher-sidebar-label">Logout</span></a></div>
+    <div class="border-t border-slate-800 p-3"><form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" title="Logout" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-950/40"><i class="fa-solid fa-right-from-bracket w-5 text-center"></i><span class="teacher-sidebar-label">Logout</span></button></form></div>
 </aside>
-
-<style>
-    #teacher-sidebar.is-collapsed { width: 4.5rem; }
-    #teacher-sidebar.is-collapsed .teacher-sidebar-label { display: none; }
-    #teacher-sidebar.is-collapsed > div:first-child { justify-content: center; padding-left: .75rem; padding-right: .75rem; }
-    @media (max-width: 767px) { #teacher-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 40; transform: translateX(-100%); } #teacher-sidebar.is-mobile-open { transform: translateX(0); } }
-</style>

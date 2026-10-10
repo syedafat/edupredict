@@ -12,13 +12,22 @@ class FakeCollection:
         self.updates = []
 
     def find(self, query, projection=None):
-        if "role" in query:
+        if "_id" in query and "role" not in query:
             ids = set(query.get("_id", {}).get("$in", []))
             return [
                 document for document in self.documents
                 if document.get("_id") in ids
+            ]
+        if "role" in query:
+            ids = set(query.get("_id", {}).get("$in", []))
+            status_in = set(query.get("status", {}).get("$in", [])) if isinstance(query.get("status"), dict) and "$in" in query["status"] else None
+            status_nin = set(query.get("status", {}).get("$nin", [])) if isinstance(query.get("status"), dict) and "$nin" in query["status"] else None
+            return [
+                document for document in self.documents
+                if document.get("_id") in ids
                 and document.get("role") == query["role"]
-                and document.get("status") not in query["status"]["$nin"]
+                and (status_in is None or document.get("status") in status_in)
+                and (status_nin is None or document.get("status") not in status_nin)
             ]
         if "course_id" in query:
             return [
@@ -34,11 +43,18 @@ class FakeCollection:
     def update_many(self, query, update):
         self.updates.append((query, update, False))
 
+    def find_one(self, query, projection=None):
+        for document in self.documents:
+            if all(document.get(key) == value for key, value in query.items()):
+                return document
+        return None
+
 
 class FakeDatabase:
-    def __init__(self, users, enrollments):
+    def __init__(self, users, enrollments, courses=None):
         self.users = FakeCollection(users)
         self.enrollments = FakeCollection(enrollments)
+        self.courses = FakeCollection(courses or [])
 
 
 class AcademicDataServiceTests(unittest.TestCase):
@@ -65,6 +81,14 @@ class AcademicDataServiceTests(unittest.TestCase):
         self.assertEqual(len(database.enrollments.updates), 2)
         self.assertEqual(database.enrollments.updates[0][0]["student_id"], str(retained))
         self.assertEqual(database.enrollments.updates[1][0]["student_id"]["$in"], [str(removed)])
+
+    def test_inactive_student_is_rejected_from_enrollment(self):
+        student_id = ObjectId()
+        database = FakeDatabase([{"_id": student_id, "name": "Student A", "role": "student", "status": "suspended"}], [])
+        with patch("services.academic_data_service.mongo") as mongo:
+            mongo.db = database
+            errors = AcademicDataService.validate_enrollment_students([str(student_id)])
+        self.assertEqual(errors, ["Student A is inactive and cannot be enrolled."])
 
 
 if __name__ == "__main__":

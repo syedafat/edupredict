@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Student Predictions – Teacher View{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-[1400px] space-y-6">
+
+  {# ── Page header ──────────────────────────────────────────────── #}
+  <section class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
+        <span class="h-2 w-2 rounded-full bg-teal-500"></span>My cohort · AI predictions
+      </div>
+      <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-950 dark:text-white">
+        Student Predictions
+      </h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        ML-generated risk and performance signals for your assigned students only.
+        {% if total %}<span class="font-semibold text-slate-700 dark:text-slate-300">{{ total }} record(s)</span> shown.{% endif %}
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a href="{{ url_for('teacher.dashboard') }}"
+         class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+        <i class="fa-solid fa-arrow-left text-xs"></i> Dashboard
+      </a>
+      <a href="{{ url_for('teacher.student_performance') }}"
+         class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700">
+        <i class="fa-solid fa-users text-xs"></i> View Students
+      </a>
+    </div>
+  </section>
+
+  {# ── Flash messages ───────────────────────────────────────────── #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="rounded-xl border px-4 py-3 text-sm
+        {% if category == 'error' or category == 'danger' %}border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200
+        {% elif category == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200
+        {% else %}border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200{% endif %}"
+        role="alert">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  {# ── Legend / key ─────────────────────────────────────────────── #}
+  <div class="flex flex-wrap gap-3 text-xs">
+    <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 font-bold text-red-700 dark:bg-red-950/40 dark:text-red-300">
+      <span class="h-1.5 w-1.5 rounded-full bg-red-500"></span> High risk ≥ 70 %
+    </span>
+    <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+      <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span> Moderate 40 – 69 %
+    </span>
+    <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+      <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> Low &lt; 40 %
+    </span>
+  </div>
+
+  {# ── Predictions table ────────────────────────────────────────── #}
+  <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[820px] text-left text-sm">
+        <thead class="border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-400 dark:border-slate-800 dark:bg-slate-950">
+          <tr>
+            <th class="px-5 py-3.5">Student</th>
+            <th class="px-5 py-3.5">Model</th>
+            <th class="px-5 py-3.5">Course</th>
+            <th class="px-5 py-3.5">Score</th>
+            <th class="px-5 py-3.5">Risk Level</th>
+            <th class="px-5 py-3.5">Version</th>
+            <th class="px-5 py-3.5">Generated</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+
+          {% for p in predictions %}
+          <tr class="transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
+
+            {# Student name (resolved, never raw ObjectId) #}
+            <td class="px-5 py-4">
+              <p class="font-bold text-slate-800 dark:text-slate-100">{{ p.student_name }}</p>
+              <p class="mt-0.5 font-mono text-[10px] text-slate-400">{{ p.student_id[:16] }}…</p>
+            </td>
+
+            {# Model type #}
+            <td class="px-5 py-4">
+              <span class="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                {{ p.model_type }}
+              </span>
+            </td>
+
+            {# Course code + title #}
+            <td class="px-5 py-4">
+              {% if p.course_code and p.course_code != '—' %}
+                <span class="font-mono text-xs font-bold text-slate-700 dark:text-slate-200">{{ p.course_code }}</span>
+                {% if p.course_title %}
+                  <p class="mt-0.5 text-[11px] text-slate-400 truncate max-w-[160px]" title="{{ p.course_title }}">
+                    {{ p.course_title }}
+                  </p>
+                {% endif %}
+              {% else %}
+                <span class="text-slate-400">—</span>
+              {% endif %}
+            </td>
+
+            {# Numeric score #}
+            <td class="px-5 py-4 font-mono text-sm font-black
+              {% if p.score_pct is not none and p.score_pct >= 70 %}text-red-600
+              {% elif p.score_pct is not none and p.score_pct >= 40 %}text-amber-600
+              {% elif p.score_pct is not none %}text-emerald-600
+              {% else %}text-slate-400{% endif %}">
+              {% if p.score_pct is not none %}
+                {{ p.score_pct }}%
+              {% else %}
+                N/A
+              {% endif %}
+            </td>
+
+            {# Risk level badge #}
+            <td class="px-5 py-4">
+              <span class="rounded-full px-3 py-1 text-xs font-bold {{ p.badge_class }} dark:opacity-90">
+                {{ p.level }}
+              </span>
+            </td>
+
+            {# Model version #}
+            <td class="px-5 py-4 font-mono text-xs text-slate-500 dark:text-slate-400">
+              {{ p.model_version }}
+            </td>
+
+            {# Timestamp #}
+            <td class="px-5 py-4 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+              {% if p.created_at %}
+                {% if p.created_at is string %}
+                  {{ p.created_at[:19].replace('T', ' ') }}
+                {% else %}
+                  {{ p.created_at.strftime('%Y-%m-%d %H:%M') }}
+                {% endif %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="px-5 py-16 text-center text-slate-400">
+              <i class="fa-solid fa-chart-line mb-3 text-3xl text-slate-300"></i>
+              <p class="text-sm font-semibold">No prediction records found</p>
+              <p class="mt-1 text-xs">
+                Predictions are generated automatically when student academic data is refreshed,
+                or you can trigger one from the dashboard.
+              </p>
+            </td>
+          </tr>
+          {% endfor %}
+
+        </tbody>
+      </table>
+    </div>
+
+    {% if total %}
+    <div class="border-t border-slate-100 px-5 py-3 text-xs text-slate-400 dark:border-slate-800">
+      Showing <span class="font-semibold text-slate-600 dark:text-slate-300">{{ total }}</span>
+      prediction(s) for your assigned students. Data is scoped to your cohort only.
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+

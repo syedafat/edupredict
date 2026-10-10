@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Subjects Management — EduPredict{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800">
+        <div>
+            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
+                <span class="h-2 w-2 rounded-full bg-teal-500"></span>Academic Structure
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white mt-1">Subjects Management</h1>
+            <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                Configure curriculum subjects linked directly to courses and academic departments.
+            </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ url_for('admin.courses') }}" class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 text-xs font-semibold rounded-xl transition flex items-center gap-1.5">
+                <i class="fa-solid fa-book-open text-[11px]"></i> Courses
+            </a>
+            <a href="{{ url_for('admin.departments') }}" class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 text-xs font-semibold rounded-xl transition flex items-center gap-1.5">
+                <i class="fa-solid fa-building text-[11px]"></i> Departments
+            </a>
+            <a href="{{ url_for('admin.new_subject') }}" class="px-4 py-2 bg-[#4F46E5] hover:bg-indigo-600 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm shadow-indigo-600/20">
+                <i class="fa-solid fa-plus text-[11px]"></i> Add New Subject
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter & Statistics Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 px-6 py-4 rounded-2xl border border-gray-200 dark:border-slate-800">
+        <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold text-gray-500 dark:text-slate-400">Total Subjects:</span>
+            <span class="px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold text-xs">
+                {{ subjects|length }}
+            </span>
+        </div>
+        <form method="GET" action="{{ url_for('admin.subjects') }}" class="flex items-center gap-2">
+            <label for="course_filter" class="text-xs font-medium text-gray-600 dark:text-slate-400">Filter by Course:</label>
+            <select id="course_filter" name="course_id" data-auto-submit class="text-xs border rounded-xl px-3 py-1.5 bg-gray-50 dark:bg-slate-800 dark:border-slate-700 focus:outline-none">
+                <option value="">All Courses</option>
+                {% for course in courses %}
+                    <option value="{{ course['_id'] }}" {% if selected_course_id == (course['_id']|string) %}selected{% endif %}>
+                        {{ course.get('code', 'Course') }} — {{ course.get('title', '') }}
+                    </option>
+                {% endfor %}
+            </select>
+            {% if selected_course_id %}
+                <a href="{{ url_for('admin.subjects') }}" class="text-xs text-indigo-600 hover:underline">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Subjects Table -->
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-gray-50 dark:bg-slate-950 text-gray-500 uppercase tracking-wider border-b border-gray-100 dark:border-slate-800">
+                    <tr>
+                        <th class="p-4">Subject Code</th>
+                        <th class="p-4">Subject Name & Details</th>
+                        <th class="p-4">Linked Course</th>
+                        <th class="p-4">Department</th>
+                        <th class="p-4">Status</th>
+                        <th class="p-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
+                    {% for subject in subjects %}
+                    <tr class="hover:bg-gray-50/60 dark:hover:bg-slate-800/50 transition">
+                        <td class="p-4 font-mono font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                            {{ subject.get('code', '—') }}
+                        </td>
+                        <td class="p-4">
+                            <span class="font-bold text-gray-900 dark:text-white text-sm block">{{ subject.get('name', '—') }}</span>
+                            {% if subject.get('description') %}
+                                <span class="text-gray-500 dark:text-slate-400 font-normal text-[11px] block mt-0.5 line-clamp-1 max-w-md">
+                                    {{ subject.get('description') }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="p-4">
+                            <span class="font-semibold text-gray-800 dark:text-slate-200 block font-mono text-[11px]">
+                                {{ subject.get('course_code', '—') }}
+                            </span>
+                            <span class="text-gray-500 text-[11px] block truncate max-w-[180px]">
+                                {{ subject.get('course_title', '') }}
+                            </span>
+                        </td>
+                        <td class="p-4">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                                <i class="fa-solid fa-building text-[9px] mr-1"></i>
+                                {{ subject.get('department_name', 'General Studies') }}
+                            </span>
+                        </td>
+                        <td class="p-4 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold {{ 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300' if subject.get('status') == 'active' else 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' }}">
+                                <span class="h-1.5 w-1.5 rounded-full {{ 'bg-green-500' if subject.get('status') == 'active' else 'bg-amber-500' }} mr-1.5"></span>
+                                {{ subject.get('status', 'active')|capitalize }}
+                            </span>
+                        </td>
+                        <td class="p-4 text-right space-x-1 whitespace-nowrap">
+                            <a href="{{ url_for('admin.edit_subject', subject_id=subject['_id']) }}" class="inline-block px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-lg text-xs font-medium transition">
+                                Edit
+                            </a>
+                            <form method="POST" action="{{ url_for('admin.delete_subject', subject_id=subject['_id']) }}" class="inline" data-confirm="Are you sure you want to delete or toggle this subject?">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="px-3 py-1 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 rounded-lg text-xs font-medium transition">
+                                    Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="p-12 text-center text-gray-400">
+                            <i class="fa-solid fa-book text-3xl mb-2 text-gray-300 dark:text-slate-700"></i>
+                            <p class="text-sm font-semibold">No subjects configured yet.</p>
+                            <p class="text-xs mt-1">Click "Add New Subject" to create curriculum subjects linked to your courses.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

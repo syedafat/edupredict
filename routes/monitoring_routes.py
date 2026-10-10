@@ -8,18 +8,34 @@ from utils.decorators import role_required
 monitoring_bp = Blueprint("monitoring", __name__, url_prefix="/monitoring")
 
 
+@monitoring_bp.route("/health", endpoint="liveness")
+def liveness():
+    """Cheap process check; intentionally independent of external services."""
+    return jsonify({"status": "ok"}), 200
+
+
+@monitoring_bp.route("/health/ready", endpoint="readiness")
+def readiness():
+    """Check that the application can reach its required database dependency."""
+    try:
+        mongo.cx.admin.command("ping")
+    except Exception:
+        return jsonify({"status": "not_ready", "database": "unavailable"}), 503
+    return jsonify({"status": "ready", "database": "ok"}), 200
+
+
 @monitoring_bp.route("/health")
 def health():
     database = {"status": "unavailable"}
     try:
         mongo.cx.admin.command("ping")
         database = {"status": "ok"}
-    except Exception as exc:
-        database = {"status": "unavailable", "detail": str(exc)[:180]}
+    except Exception:
+        database = {"status": "unavailable"}
     try:
         hdfs = HadoopService.status()
-    except Exception as exc:
-        hdfs = {"enabled": current_app.config.get("HADOOP_ENABLED", False), "reachable": False, "message": str(exc)[:180]}
+    except Exception:
+        hdfs = {"enabled": current_app.config.get("HADOOP_ENABLED", False), "reachable": False, "message": "HDFS status unavailable"}
     return jsonify({
         "status": "ok" if database["status"] == "ok" else "degraded",
         "database": database,

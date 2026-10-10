@@ -1,10 +1,9 @@
-<aside class="w-64 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col">
-  <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center space-x-3"><i class="fa-solid fa-chart-line text-indigo-600 text-xl"></i><span class="font-bold text-lg">Analyst Workspace</span></div>
-  <nav class="flex-1 p-4 space-y-1">
-    <a href="{{ url_for('analyst.dashboard') }}" class="block px-4 py-3 rounded-lg text-sm hover:bg-slate-100"><i class="fa-solid fa-chart-pie w-5"></i> Dashboard</a>
-    <a href="{{ url_for('data.upload_dataset') }}" class="block px-4 py-3 rounded-lg text-sm hover:bg-slate-100"><i class="fa-solid fa-database w-5"></i> Data ingestion</a>
-    <a href="{{ url_for('ml.view_predictions') }}" class="block px-4 py-3 rounded-lg text-sm hover:bg-slate-100"><i class="fa-solid fa-brain w-5"></i> Predictions</a>
-    <a href="{{ url_for('support.list_tickets') }}" class="block px-4 py-3 rounded-lg text-sm hover:bg-slate-100"><i class="fa-solid fa-headset w-5"></i> Support</a>
+<aside id="analyst-sidebar" data-role-sidebar class="w-64 shrink-0 bg-slate-950 text-slate-300 transition-all duration-200" aria-label="Analyst navigation">
+  <div class="flex h-16 items-center gap-3 border-b border-slate-800 px-5"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500 text-white"><i class="fa-solid fa-graduation-cap"></i></span><div class="analyst-sidebar-label"><p class="font-black tracking-wide text-white">EduPredict</p><p class="text-[10px] uppercase tracking-[0.15em] text-slate-500">Analyst workspace</p></div></div>
+  <nav class="h-[calc(100vh-8rem)] flex-1 overflow-y-auto p-3">
+    <p class="analyst-sidebar-label mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Workspace</p>
+    {% set items = [('Dashboard', 'analyst.dashboard', 'fa-chart-pie', url_for('analyst.dashboard')), ('Data ingestion', 'data.upload_dataset', 'fa-database', url_for('data.upload_dataset')), ('Predictions', 'ml.view_predictions', 'fa-brain', url_for('ml.view_predictions')), ('Support', 'support.list_tickets', 'fa-headset', url_for('support.list_tickets'))] %}
+    {% for label, endpoint, icon, href in items %}<a href="{{ href }}" title="{{ label }}" class="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition {{ 'bg-indigo-500 text-white' if request.endpoint == endpoint else 'text-slate-400 hover:bg-slate-900 hover:text-white' }}"><i class="fa-solid {{ icon }} w-5 text-center"></i><span class="analyst-sidebar-label">{{ label }}</span></a>{% endfor %}
   </nav>
-  <div class="p-4 border-t"><a href="{{ url_for('auth.logout') }}" class="block px-4 py-3 text-sm text-red-600"><i class="fa-solid fa-right-from-bracket w-5"></i> Logout</a></div>
+  <div class="border-t border-slate-800 p-3"><form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" title="Logout" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-950/40"><i class="fa-solid fa-right-from-bracket w-5 text-center"></i><span class="analyst-sidebar-label">Logout</span></button></form></div>
 </aside>

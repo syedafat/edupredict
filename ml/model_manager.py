@@ -1,6 +1,7 @@
 import os
 import logging
 import hashlib
+import tempfile
 import joblib
 from flask import current_app
 
@@ -14,6 +15,17 @@ logger = logging.getLogger(__name__)
 
 # Canonical set of supported model types — must match VALID_MODEL_TYPES in ml_routes.py
 SUPPORTED_MODEL_TYPES = {'performance', 'dropout', 'anomaly', 'demand', 'trend'}
+
+
+def compute_file_sha256(file_path: str) -> str:
+    """Return the SHA-256 checksum for a file on disk."""
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+    digest = hashlib.sha256()
+    with open(file_path, 'rb') as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _model_folder() -> str:
@@ -98,41 +110,57 @@ class ModelManager:
         """
         try:
             path = _model_path(model_type)
-            joblib.dump(model_object, path)
-            logger.info("Model '%s' saved to '%s'.", model_type, path)
+            folder = os.path.dirname(path)
+            with tempfile.NamedTemporaryFile(dir=folder, prefix=f".{model_type}.", suffix=".tmp", delete=False) as handle:
+                temporary_path = handle.name
+            try:
+                joblib.dump(model_object, temporary_path)
+                os.replace(temporary_path, path)
+            finally:
+                if os.path.exists(temporary_path):
+                    os.remove(temporary_path)
+            logger.info("Model '%s' saved.", model_type)
             return True
         except ValueError as exc:
-            logger.error("Cannot save model: %s", exc)
+            logger.error("Cannot save model (error type: %s).", type(exc).__name__)
             return False
         except Exception as exc:
-            logger.error("Failed to save model '%s': %s", model_type, exc)
+            logger.error("Failed to save model '%s' (error type: %s).", model_type, type(exc).__name__)
             return False
 
     @staticmethod
-    def load_model(model_type: str):
+    def load_model(model_type: str, expected_hash: str | None = None):
         """
         Load and return a persisted model from disk.
-        Returns None if the file does not exist or cannot be loaded.
-        Logs a clear error rather than raising.
+        Returns None if the file does not exist, does not match the expected checksum,
+        or cannot be loaded. Logs a clear error rather than raising.
         """
         try:
             path = _model_path(model_type)
         except ValueError as exc:
-            logger.error("Cannot load model: %s", exc)
+            logger.error("Cannot load model (error type: %s).", type(exc).__name__)
             return None
 
         if not os.path.isfile(path):
-            logger.warning("Model file not found for type '%s' at '%s'.", model_type, path)
+            logger.warning("Model file not found for type '%s'.", model_type)
             return None
+
+        if expected_hash is not None:
+            actual_hash = compute_file_sha256(path)
+            if actual_hash != expected_hash:
+                logger.error(
+                    "Checksum mismatch for model '%s': expected '%s', got '%s'.",
+                    model_type, expected_hash, actual_hash,
+                )
+                return None
 
         try:
             model = joblib.load(path)
-            logger.info("Model '%s' loaded from '%s'.", model_type, path)
+            logger.info("Model '%s' loaded.", model_type)
             return model
         except Exception as exc:
             logger.error(
-                "Failed to load model '%s' from '%s'. "
-                "File may be corrupt or incompatible: %s",
-                model_type, path, exc
+                "Failed to load model '%s' (error type: %s).",
+                model_type, type(exc).__name__
             )
             return None

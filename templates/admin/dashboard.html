@@ -55,16 +55,16 @@
     </section>
     <section class="grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr_1fr]">
         <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div class="flex items-center justify-between"><div><h2 class="text-lg font-black text-slate-950 dark:text-white">Platform signal mix</h2><p class="mt-1 text-sm text-slate-500">Current operational volume across the institution.</p></div><i class="fa-solid fa-chart-column text-indigo-600"></i></div><canvas id="adminSignalChart" class="mt-5 max-h-64"></canvas></div>
-        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div class="flex items-center justify-between"><div><h2 class="text-lg font-black text-slate-950 dark:text-white">Risk posture</h2><p class="mt-1 text-sm text-slate-500">High-risk cases requiring review.</p></div><i class="fa-solid fa-shield-heart text-red-500"></i></div><div class="mt-8 flex items-center justify-center"><div class="relative flex h-40 w-40 items-center justify-center rounded-full" style="background: conic-gradient(#EF4444 {{ [dashboard_data.stats.at_risk * 2, 100]|min }}%, #E2E8F0 0)"><div class="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-white dark:bg-slate-900"><span class="text-3xl font-black text-slate-900 dark:text-white">{{ dashboard_data.stats.at_risk }}</span><span class="text-[10px] uppercase tracking-wide text-slate-400">high risk</span></div></div></div></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div class="flex items-center justify-between"><div><h2 class="text-lg font-black text-slate-950 dark:text-white">Risk posture</h2><p class="mt-1 text-sm text-slate-500">High-risk cases requiring review.</p></div><i class="fa-solid fa-shield-heart text-red-500"></i></div><div class="mt-8 flex items-center justify-center"><div class="relative flex h-40 w-40 items-center justify-center rounded-full risk-donut metric-donut-{{ [dashboard_data.stats.at_risk * 2, 100]|min|int }}"><div class="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-white dark:bg-slate-900"><span class="text-3xl font-black text-slate-900 dark:text-white">{{ dashboard_data.stats.at_risk }}</span><span class="text-[10px] uppercase tracking-wide text-slate-400">high risk</span></div></div></div></div>
     </section>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script nonce="{{ csp_nonce }}">
 new Chart(document.getElementById('adminSignalChart'), {type:'bar', data:{labels:['Students','Teachers','Courses','Datasets','At-risk'],datasets:[{data:[{{ dashboard_data.stats.students }},{{ dashboard_data.stats.teachers }},{{ dashboard_data.stats.courses }},{{ dashboard_data.stats.datasets }},{{ dashboard_data.stats.at_risk }}],backgroundColor:['#4F46E5','#6366F1','#14B8A6','#F59E0B','#EF4444'],borderRadius:8,barThickness:26}]}, options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}});
 </script>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 (() => {
     const root = document.querySelector('[data-dashboard-root]');
     const button = root?.querySelector('[data-refresh-dashboard]');

@@ -1,6 +1,7 @@
+# requirements.txt
+
 # EduPredict — Python Dependencies
-# Version ranges keep the application installable on supported Python 3.12+
-# runtimes while still allowing security updates.
+# Version ranges keep the application installable on supported Python 3.12+ runtime while still allowing security updates.
 
 # --- Core Flask stack ---
 Flask>=3.1,<4
@@ -29,3 +30,7 @@ WTForms>=3.2,<4
 
 # --- Rate limiting ---
 Flask-Limiter>=4,<5
+redis>=5.0,<6
+
+# --- Production WSGI Server ---
+gunicorn>=22.0,<24

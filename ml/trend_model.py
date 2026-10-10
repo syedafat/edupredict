@@ -16,8 +16,29 @@ class TrendModel:
         predicted = self.model.predict(X)
         return {"mse": float(mean_squared_error(y, predicted)), "samples": len(X)}
 
+    def _calculate_slope(self, values):
+        series = np.asarray(values, dtype=float)
+        if series.ndim != 1 or series.size < 2:
+            raise ValueError("insufficient_temporal_data")
+        x = np.arange(series.size, dtype=float)
+        # Use a proper time-indexed linear fit to estimate the change in score over time.
+        model = LinearRegression()
+        model.fit(x.reshape(-1, 1), series)
+        return float(model.coef_[0])
+
     def predict_trend(self, features):
         values = np.asarray(features, dtype=float)
-        if values.ndim != 1 or values.size == 0:
-            raise ValueError("features must be a non-empty list of numbers.")
-        return float(self.model.predict(values.reshape(1, -1))[0])
+        if values.ndim != 1 or values.size < 2:
+            raise ValueError("insufficient_temporal_data")
+        return self._calculate_slope(values)
+
+    def evaluate_student_trajectory(self, values):
+        series = np.asarray(values, dtype=float)
+        if series.ndim != 1 or series.size < 2:
+            raise ValueError("insufficient_temporal_data")
+        slope = self._calculate_slope(series)
+        return {
+            "slope": slope,
+            "trajectory": series.tolist(),
+            "points_analyzed": int(series.size),
+        }

@@ -73,7 +73,7 @@
     </div>
 
 </div>
-<script>
+<script nonce="{{ csp_nonce }}">
 document.querySelectorAll('.mark-notification-read').forEach((button) => {
     button.addEventListener('click', async () => {
         const response = await fetch(

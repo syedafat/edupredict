@@ -1,4 +1,15 @@
 .env
+.env.*
+!.env.example
+!.env.staging.example
+!.env.production.example
+node_modules/
+secrets/
+local-credentials/
+*.pem
+*.key
+*.p12
+*.pfx
 .venv/
 __pycache__/
 *.py[cod]

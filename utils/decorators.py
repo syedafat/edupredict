@@ -27,7 +27,12 @@ def role_required(*allowed_roles):
                 user = mongo.db.users.find_one({'_id': object_id})
             except Exception:
                 user = None
-            if not user or user.get('status') in {'suspended', 'deleted'}:
+            user_status = str((user or {}).get('status', 'approved')).strip().lower()
+            if (
+                not user
+                or user_status in {'suspended', 'deleted'}
+                or (user.get('role') == 'teacher' and user_status not in {'approved', 'active'})
+            ):
                 session.clear()
                 flash('Your account has been deactivated or no longer exists.', 'error')
                 return redirect(url_for('auth.login'))

@@ -1,5 +1,72 @@
 {% extends "base.html" %}
-{% block title %}Predictions — EduPredict{% endblock %}
+{% block title %}Model Predictions — EduPredict{% endblock %}
 {% block content %}
-<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden"><div class="p-6 border-b"><h1 class="text-2xl font-bold">Model Predictions</h1><p class="text-xs text-gray-500 mt-1">{{ predictions|length }} persisted prediction records.</p></div><table class="w-full text-left text-xs"><thead class="bg-gray-50 text-gray-500 uppercase"><tr><th class="p-4">Student</th><th class="p-4">Model</th><th class="p-4">Prediction / Risk</th><th class="p-4">Created</th></tr></thead><tbody class="divide-y">{% for prediction in predictions %}<tr><td class="p-4">{{ prediction.get('student_id', '—') }}</td><td class="p-4">{{ prediction.get('model_type', '—') }}</td><td class="p-4">{{ prediction.get('risk_score', prediction.get('prediction', '—')) }}</td><td class="p-4">{{ prediction.get('created_at', '—') }}</td></tr>{% else %}<tr><td colspan="4" class="p-8 text-center text-gray-400">No predictions recorded.</td></tr>{% endfor %}</tbody></table></div>
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 dark:border-slate-800 dark:bg-slate-900">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Machine Learning Predictions</h1>
+            <p class="text-xs text-gray-500 mt-1">Real-time student academic performance and dropout risk scoring records.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ url_for('admin.ml_models') }}" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-xl transition flex items-center gap-1.5">
+                <i class="fa-solid fa-brain"></i> Model Registry
+            </a>
+        </div>
+    </div>
+
+    <!-- Predictions Table -->
+    <div class="bg-white rounded-2xl border border-gray-200 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
+        <div class="p-5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+            <h3 class="font-bold text-sm text-gray-900 dark:text-white">Prediction Records · {{ predictions|length }} records</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-gray-50 text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="p-4">Student</th>
+                        <th class="p-4">Model Type</th>
+                        <th class="p-4">Risk / Prediction Score</th>
+                        <th class="p-4">Risk Level</th>
+                        <th class="p-4">Model Version</th>
+                        <th class="p-4 text-right">Generated</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
+                    {% for p in predictions %}
+                    <tr class="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition">
+                        <td class="p-4">
+                            <span class="font-bold text-gray-900 dark:text-white">{{ p.student_name }}</span>
+                            <span class="block font-mono text-[10px] text-gray-400">{{ p.get('student_id', '—') }}</span>
+                        </td>
+                        <td class="p-4">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 capitalize">
+                                {{ p.get('model_type', '—') }}
+                            </span>
+                        </td>
+                        <td class="p-4 font-mono font-bold text-sm text-gray-900 dark:text-white">
+                            {{ p.risk_percent if p.risk_percent is defined else p.get('prediction', '—') }}
+                        </td>
+                        <td class="p-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold {{ p.risk_badge if p.risk_badge is defined else 'bg-slate-100 text-slate-700' }}">
+                                {{ p.risk_level if p.risk_level is defined else 'Computed' }}
+                            </span>
+                        </td>
+                        <td class="p-4 font-mono text-gray-500 text-[11px]">
+                            {{ p.get('model_version', 'v1.0') }}
+                        </td>
+                        <td class="p-4 text-right text-gray-500">
+                            {{ p.get('created_at', '—') }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="p-8 text-center text-gray-400">No predictions generated yet. Run risk prediction from the Teacher or Admin portal.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 {% endblock %}

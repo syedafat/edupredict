@@ -32,5 +32,6 @@ class ReportService:
 
             df.to_csv(output_path, index=False)
             return {'success': True, 'path': output_path}
-        except Exception as e:
-            return {'success': False, 'error': str(e)}
+        except Exception as exc:
+            current_app.logger.error("Institutional report generation failed (error type: %s).", type(exc).__name__)
+            return {'success': False, 'error': 'The report could not be generated.'}

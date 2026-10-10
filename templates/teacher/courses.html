@@ -1,17 +1,359 @@
 {% extends "base.html" %}
-{% block title %}Assigned Courses — EduPredict{% endblock %}
+{% block title %}Assigned Courses & Subject Management — EduPredict{% endblock %}
 {% block content %}
 <div class="space-y-6">
-<div><a href="{{ url_for('teacher.submissions') }}" class="text-xs font-bold text-indigo-600">Review student submissions</a></div>
-<div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"><div class="p-6 border-b"><h1 class="text-2xl font-bold">Assigned Courses</h1><p class="text-xs text-slate-500 mt-1">Courses assigned to your account.</p></div><table class="w-full text-left text-xs"><thead class="bg-slate-50"><tr><th class="p-4">Code</th><th class="p-4">Title</th><th class="p-4">Department</th><th class="p-4">Credits</th><th class="p-4">Semester</th><th class="p-4">Roster</th></tr></thead><tbody class="divide-y">{% for course in courses %}<tr><td class="p-4 font-mono">{{ course.get('code', '—') }}</td><td class="p-4 font-bold">{{ course.get('title', '—') }}</td><td class="p-4">{{ course.get('department', '—') }}</td><td class="p-4">{{ course.get('credits', 0) }}</td><td class="p-4">{{ course.get('semester', '—') }}</td><td class="p-4"><a href="{{ url_for('teacher.student_performance') }}" class="px-3 py-1 bg-gray-100 rounded-lg">View Students</a></td></tr>{% else %}<tr><td colspan="6" class="p-8 text-center text-slate-400">No courses assigned.</td></tr>{% endfor %}</tbody></table></div>
-<div class="grid gap-6 lg:grid-cols-3">
-{% for action, endpoint, title, fields in [('Attendance', 'teacher.record_attendance', 'Record attendance', 'attendance'), ('Marks', 'teacher.record_grade', 'Record marks', 'grade'), ('Assignment', 'teacher.create_assignment', 'Publish assignment', 'assignment')] %}
-<form method="POST" action="{{ url_for(endpoint) }}" class="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><h2 class="font-bold">{{ title }}</h2>
-<label class="block text-xs font-semibold">Course<select name="course_id" required class="mt-1 w-full rounded-lg border px-3 py-2">{% for course in courses %}<option value="{{ course['_id'] }}">{{ course.get('code', course.get('title', 'Course')) }}</option>{% endfor %}</select></label>
-{% if fields != 'assignment' %}<label class="block text-xs font-semibold">Student<select name="student_id" required class="mt-1 w-full rounded-lg border px-3 py-2">{% for student in students %}<option value="{{ student['_id'] }}">{{ student.get('name', 'Student') }}</option>{% endfor %}</select></label>{% endif %}
-{% if fields == 'attendance' %}<label class="block text-xs font-semibold">Date<input type="date" name="date" required class="mt-1 w-full rounded-lg border px-3 py-2"></label><label class="block text-xs font-semibold">Status<select name="status" class="mt-1 w-full rounded-lg border px-3 py-2"><option value="present">Present</option><option value="absent">Absent</option><option value="late">Late</option><option value="excused">Excused</option></select></label>{% elif fields == 'grade' %}<label class="block text-xs font-semibold">Assessment<input name="assessment" required class="mt-1 w-full rounded-lg border px-3 py-2"></label><label class="block text-xs font-semibold">Score<input type="number" name="score" min="0" max="100" step="0.01" required class="mt-1 w-full rounded-lg border px-3 py-2"></label><label class="block text-xs font-semibold">Feedback<textarea name="feedback" rows="2" class="mt-1 w-full rounded-lg border px-3 py-2"></textarea></label>{% else %}<label class="block text-xs font-semibold">Title<input name="title" required class="mt-1 w-full rounded-lg border px-3 py-2"></label><label class="block text-xs font-semibold">Description<textarea name="description" rows="2" class="mt-1 w-full rounded-lg border px-3 py-2"></textarea></label><label class="block text-xs font-semibold">Due date<input type="date" name="due_date" class="mt-1 w-full rounded-lg border px-3 py-2"></label><label class="block text-xs font-semibold">Maximum marks<input type="number" name="max_marks" min="1" max="1000" value="100" step="0.01" class="mt-1 w-full rounded-lg border px-3 py-2"></label>{% endif %}
-<button class="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white">Save {{ action }}</button></form>
-{% endfor %}
-</div></div>
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div>
+            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
+                <span class="h-2 w-2 rounded-full bg-teal-500"></span>Teacher Workspace
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white mt-1">Assigned Courses & Subjects</h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Record attendance, marks, and publish coursework at the individual subject level.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ url_for('teacher.submissions') }}" class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 dark:bg-indigo-950/40 dark:text-indigo-300">
+                <i class="fa-solid fa-list-check text-xs"></i> Review Student Submissions
+            </a>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="rounded-xl border px-4 py-3 text-sm
+                {% if category in ['error', 'danger'] %}border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200
+                {% elif category == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200
+                {% else %}border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200{% endif %}" role="alert">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endwith %}
+
+    <!-- Assigned Courses Table -->
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+        <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div>
+                <h2 class="font-bold text-sm text-gray-900 dark:text-white">Assigned Courses · {{ courses|length }} records</h2>
+                <p class="text-xs text-slate-400">Curriculum courses currently assigned to your teaching profile.</p>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 dark:bg-slate-950 text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                    <tr>
+                        <th class="p-4">Code</th>
+                        <th class="p-4">Title</th>
+                        <th class="p-4">Department</th>
+                        <th class="p-4">Curriculum Subjects</th>
+                        <th class="p-4">Credits</th>
+                        <th class="p-4">Semester</th>
+                        <th class="p-4 text-right">Roster</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    {% for course in courses %}
+                    {% set c_id_str = course['_id']|string %}
+                    {% set course_subs = subjects_by_course.get(c_id_str, []) %}
+                    <tr class="hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition">
+                        <td class="p-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">{{ course.get('code', '—') }}</td>
+                        <td class="p-4 font-bold text-gray-900 dark:text-white">{{ course.get('title', '—') }}</td>
+                        <td class="p-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                                {{ course.get('department', '—') }}
+                            </span>
+                        </td>
+                        <td class="p-4">
+                            {% if course_subs %}
+                                <div class="flex flex-wrap gap-1">
+                                    {% for sub in course_subs %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono text-[10px]" title="{{ sub.get('description', '') }}">
+                                            <i class="fa-solid fa-book text-[8px] mr-1 text-indigo-500"></i>
+                                            {{ sub.get('code', sub.get('name')) }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="text-slate-400 italic text-[11px]">No specific subjects defined</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-4 font-mono">{{ course.get('credits', 0) }}</td>
+                        <td class="p-4">{{ course.get('semester', '—') }}</td>
+                        <td class="p-4 text-right">
+                            <a href="{{ url_for('teacher.student_performance') }}" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-xs font-semibold transition inline-flex items-center gap-1">
+                                <i class="fa-solid fa-user-graduate text-[10px]"></i> View Students
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="p-8 text-center text-slate-400">No courses assigned to your account.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 3 Quick Action Forms: Attendance, Marks, and Assignment -->
+    <div class="grid gap-6 lg:grid-cols-3">
+
+        <!-- 1. Record Attendance Form -->
+        <form method="POST" action="{{ url_for('teacher.record_attendance') }}" class="course-action-form space-y-3.5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-300">
+                        <i class="fa-solid fa-calendar-check text-xs"></i>
+                    </span>
+                    <h2 class="font-bold text-sm text-gray-900 dark:text-white">Record Attendance</h2>
+                </div>
+                <span class="text-[10px] font-semibold text-sky-600 uppercase tracking-wider bg-sky-50 dark:bg-sky-950/40 px-2 py-0.5 rounded">Daily Session</span>
+            </div>
+
+            <!-- Course Selection -->
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Course <span class="text-red-500">*</span>
+                <select name="course_id" required class="course-select mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    {% for course in courses %}
+                        <option value="{{ course['_id'] }}">{{ course.get('code', 'Course') }} — {{ course.get('title', '') }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <!-- Dynamic Subject Selection -->
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Subject <span class="text-indigo-600 font-bold">*</span>
+                <select name="subject_id" class="subject-select mt-1 w-full rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/40 dark:bg-indigo-950/20 px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <!-- Populated dynamically via JS -->
+                </select>
+            </label>
+
+            <!-- Student Selection -->
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Student <span class="text-red-500">*</span>
+                <select name="student_id" required class="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    {% for student in students %}
+                        <option value="{{ student['_id'] }}">{{ student.get('name', 'Student') }} ({{ student.get('department', 'General Studies') }})</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <!-- Date & Status -->
+            <div class="grid grid-cols-2 gap-2">
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Date <span class="text-red-500">*</span>
+                    <input type="date" name="date" required value="{{ current_date or '' }}" class="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </label>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Status
+                    <select name="status" class="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="present">Present</option>
+                        <option value="absent">Absent</option>
+                        <option value="late">Late</option>
+                        <option value="excused">Excused</option>
+                    </select>
+                </label>
+            </div>
+
+            <button type="submit" class="w-full rounded-xl bg-sky-600 hover:bg-sky-700 py-2.5 text-xs font-bold text-white shadow-sm transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-check"></i> Save Attendance
+            </button>
+        </form>
+
+        <!-- 2. Record Marks Form -->
+        <form method="POST" action="{{ url_for('teacher.record_grade') }}" class="course-action-form space-y-3.5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        <i class="fa-solid fa-chart-line text-xs"></i>
+                    </span>
+                    <h2 class="font-bold text-sm text-gray-900 dark:text-white">Record Marks</h2>
+                </div>
+                <span class="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded">Grading</span>
+            </div>
+
+            <!-- Course Selection -->
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Course <span class="text-red-500">*</span>
+                <select name="course_id" required class="course-select mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    {% for course in courses %}
+                        <option value="{{ course['_id'] }}">{{ course.get('code', 'Course') }} — {{ course.get('title', '') }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <!-- Dynamic Subject Selection -->
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Subject <span class="text-indigo-600 font-bold">*</span>
+                <select name="subject_id" class="subject-select mt-1 w-full rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/40 dark:bg-indigo-950/20 px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <!-- Populated dynamically via JS -->
+                </select>
+            </label>
+
+            <!-- Student Selection -->
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Student <span class="text-red-500">*</span>
+                <select name="student_id" required class="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    {% for student in students %}
+                        <option value="{{ student['_id'] }}">{{ student.get('name', 'Student') }} ({{ student.get('department', 'General Studies') }})</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <!-- Assessment & Score -->
+            <div class="grid grid-cols-2 gap-2">
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Assessment <span class="text-red-500">*</span>
+                    <input name="assessment" placeholder="e.g. Midterm Lab" required class="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </label>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Score (0-100) <span class="text-red-500">*</span>
+                    <input type="number" name="score" min="0" max="100" step="0.01" required placeholder="85.5" class="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </label>
+            </div>
+
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Feedback (Optional)
+                <textarea name="feedback" rows="1" placeholder="Constructive evaluation notes..." class="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+            </label>
+
+            <button type="submit" class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 py-2.5 text-xs font-bold text-white shadow-sm transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-check"></i> Save Marks
+            </button>
+        </form>
+
+        <!-- 3. Publish Assignment Form -->
+        <form method="POST" action="{{ url_for('teacher.create_assignment') }}" class="course-action-form space-y-3.5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
+                        <i class="fa-solid fa-clipboard-list text-xs"></i>
+                    </span>
+                    <h2 class="font-bold text-sm text-gray-900 dark:text-white">Publish Assignment</h2>
+                </div>
+                <span class="text-[10px] font-semibold text-indigo-600 uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded">Coursework</span>
+            </div>
+
+            <!-- Course Selection -->
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Course <span class="text-red-500">*</span>
+                <select name="course_id" required class="course-select mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    {% for course in courses %}
+                        <option value="{{ course['_id'] }}">{{ course.get('code', 'Course') }} — {{ course.get('title', '') }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <!-- Dynamic Subject Selection -->
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Subject <span class="text-indigo-600 font-bold">*</span>
+                <select name="subject_id" class="subject-select mt-1 w-full rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/40 dark:bg-indigo-950/20 px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <!-- Populated dynamically via JS -->
+                </select>
+            </label>
+
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Assignment Title <span class="text-red-500">*</span>
+                <input name="title" required placeholder="e.g., Project Deliverable 1" class="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </label>
+
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Description & Instructions
+                <textarea name="description" rows="1" placeholder="Deliverable details and ZIP submission guidelines..." class="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+            </label>
+
+            <div class="grid grid-cols-2 gap-2">
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Due Date
+                    <input type="date" name="due_date" class="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </label>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Max Marks
+                    <input type="number" name="max_marks" min="1" max="1000" value="100" step="0.01" class="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </label>
+            </div>
+
+            <button type="submit" class="w-full rounded-xl bg-indigo-600 hover:bg-indigo-700 py-2.5 text-xs font-bold text-white shadow-sm transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-paper-plane"></i> Publish Assignment
+            </button>
+        </form>
+
+    </div>
+</div>
+
+<!-- Dynamic Subject Filtering Data and Client Script -->
+<script nonce="{{ csp_nonce }}">
+    // Embedded JSON of subjects grouped by course_id string
+    const subjectsByCourse = {
+        {% for cid_str, s_list in subjects_by_course.items() %}
+            "{{ cid_str }}": [
+                {% for sub in s_list %}
+                    {
+                        "id": "{{ sub['_id'] }}",
+                        "code": {{ sub.get('code', '')|tojson }},
+                        "name": {{ sub.get('name', '')|tojson }}
+                    }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ]{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+
+    function updateSubjectOptions(form) {
+        const courseSelect = form.querySelector('.course-select');
+        const subjectSelect = form.querySelector('.subject-select');
+        if (!courseSelect || !subjectSelect) return;
+
+        const selectedCourseId = courseSelect.value;
+        const availableSubjects = subjectsByCourse[selectedCourseId] || [];
+
+        // Save current selection if possible
+        const prevValue = subjectSelect.value;
+        subjectSelect.innerHTML = '';
+
+        if (availableSubjects.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '-- General / No Specific Subject --';
+            subjectSelect.appendChild(opt);
+        } else {
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = '-- Select Subject --';
+            subjectSelect.appendChild(defaultOpt);
+
+            availableSubjects.forEach(sub => {
+                const opt = document.createElement('option');
+                opt.value = sub.id;
+                opt.textContent = `[${sub.code}] ${sub.name}`;
+                if (sub.id === prevValue) {
+                    opt.selected = true;
+                }
+                subjectSelect.appendChild(opt);
+            });
+
+            // If only one subject or nothing selected, auto-select the first actual subject
+            if (availableSubjects.length === 1 || !subjectSelect.value) {
+                subjectSelect.selectedIndex = 1;
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const forms = document.querySelectorAll('.course-action-form');
+        forms.forEach(form => {
+            const courseSelect = form.querySelector('.course-select');
+            if (courseSelect) {
+                // Initialize options on load
+                updateSubjectOptions(form);
+                // Update dynamically when course changes
+                courseSelect.addEventListener('change', () => updateSubjectOptions(form));
+            }
+        });
+    });
+</script>
 {% endblock %}

@@ -19,5 +19,5 @@ class NotificationService:
             mongo.db.notifications.insert_one(notification)
             return True
         except Exception as e:
-            current_app.logger.error("Notification error: %s", e)
+            current_app.logger.error("Notification could not be saved (error type: %s).", type(e).__name__)
             return False

@@ -1,11 +1,21 @@
+"""
+ml/anomaly_detection.py
+=======================
+Unsupervised Academic Anomaly Detector for EduPredict.
+
+Detects unusual multi-dimensional behavioral and academic patterns across
+the 9 canonical operational dimensions using Isolation Forest.
+"""
 import numpy as np
 from sklearn.ensemble import IsolationForest
 from sklearn.exceptions import NotFittedError
 
 
 class AnomalyDetector:
-    def __init__(self, contamination=0.05):
-        self.model = IsolationForest(contamination=contamination, random_state=42)
+    def __init__(self, contamination=0.05, random_state=42):
+        self.contamination = contamination
+        self.random_state = random_state
+        self.model = IsolationForest(contamination=self.contamination, random_state=self.random_state)
         self._fitted = False
 
     def fit_predict(self, data):
@@ -39,9 +49,23 @@ class AnomalyDetector:
             if values.ndim != 1 or values.size == 0:
                 raise ValueError('features must be a non-empty list of numbers.')
             res = self.model.predict(values.reshape(1, -1))
-            return res[0] == -1
+            return bool(res[0] == -1)
         except NotFittedError:
             raise RuntimeError(
                 "AnomalyDetector sklearn model is not fitted. "
                 "This should not happen if fit_predict() was called successfully."
             )
+
+    def anomaly_score(self, features):
+        """
+        Return a continuous anomaly score on a 0.0 to 100.0 scale,
+        where higher scores indicate greater abnormality.
+        """
+        if not self._fitted:
+            raise RuntimeError("AnomalyDetector has not been fitted.")
+        values = np.asarray(features, dtype=float)
+        if values.ndim != 1 or values.size == 0:
+            raise ValueError('features must be a non-empty list of numbers.')
+        raw_score = float(self.model.decision_function(values.reshape(1, -1))[0])
+        score = (0.5 - raw_score) * 100.0
+        return float(np.clip(score, 0.0, 100.0))

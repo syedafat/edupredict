@@ -3,15 +3,33 @@ from utils.decorators import role_required
 from models import mongo
 from bson import ObjectId
 from datetime import datetime, timezone
+from services.academic_data_service import AcademicDataService
 
 support_bp = Blueprint('support', __name__, url_prefix='/support')
+
+
+def _ticket_scope_query():
+    """Build a ticket query limited to the current user's authorized scope."""
+    role = session.get('role')
+    user_id = str(session.get('user_id', ''))
+    if role == 'admin':
+        return {}
+    if role == 'student':
+        return {'created_by': user_id}
+    if role == 'teacher':
+        student_ids = AcademicDataService.teacher_student_ids(user_id)
+    elif role == 'analyst':
+        student_ids = AcademicDataService.analyst_student_ids(user_id)
+    else:
+        return {'_id': {'$exists': False}}
+    allowed_ids = {str(value) for value in student_ids}
+    allowed_ids.add(user_id)
+    return {'$or': [{'created_by': {'$in': list(allowed_ids)}}, {'student_id': {'$in': list(allowed_ids)}}]}
 
 @support_bp.route('/tickets', methods=['GET'])
 @role_required('admin', 'teacher', 'student', 'analyst')
 def list_tickets():
-    query = {}
-    if session.get('role') == 'student':
-        query['created_by'] = session.get('user_id')
+    query = _ticket_scope_query()
     try:
         tickets = list(mongo.db.support_tickets.find(query).sort('created_at', -1).limit(100))
     except Exception:
@@ -25,9 +43,8 @@ def ticket_detail(ticket_id):
         ticket = mongo.db.support_tickets.find_one({'_id': ObjectId(ticket_id)})
     except Exception:
         abort(404)
-    if not ticket or (
-        session.get('role') == 'student'
-        and ticket.get('created_by') != session.get('user_id')
+    if not ticket or not mongo.db.support_tickets.find_one(
+        {'_id': ticket['_id'], **_ticket_scope_query()}, {'_id': 1}
     ):
         abort(404)
     return render_template('support/ticket_detail.html', ticket=ticket, ticket_id=ticket_id)
@@ -54,19 +71,24 @@ def create_ticket():
 
 
 @support_bp.route('/ticket/<ticket_id>/respond', methods=['POST'])
-@role_required('admin', 'teacher', 'analyst')
+@role_required('admin', 'teacher', 'analyst', 'student')
 def respond_ticket(ticket_id):
     try:
         object_id = ObjectId(ticket_id)
     except Exception:
         abort(404)
     message = request.form.get('message', '').strip()
+    ticket = mongo.db.support_tickets.find_one({'_id': object_id}, {'created_by': 1})
+    if not ticket or not mongo.db.support_tickets.find_one(
+        {'_id': object_id, **_ticket_scope_query()}, {'_id': 1}
+    ):
+        abort(404)
     status = request.form.get('status', 'open').strip().lower()
-    if not message and status not in {'open', 'in_progress', 'resolved', 'closed'}:
+    if not message and (session.get('role') != 'admin' or status not in {'open', 'in_progress', 'resolved', 'closed'}):
         flash('A response or valid status is required.', 'danger')
         return redirect(url_for('support.ticket_detail', ticket_id=ticket_id))
     update = {'updated_at': datetime.now(timezone.utc), 'updated_by': session.get('user_id')}
-    if status in {'open', 'in_progress', 'resolved', 'closed'}:
+    if session.get('role') == 'admin' and status in {'open', 'in_progress', 'resolved', 'closed'}:
         update['status'] = status
     if message:
         update['$push'] = {'responses': {

@@ -2,11 +2,99 @@
 {% block title %}Courses — EduPredict{% endblock %}
 {% block content %}
 <div class="space-y-6">
-    <div class="flex items-center justify-between bg-white p-6 rounded-2xl border border-gray-200"><div><h1 class="text-2xl font-bold">Course Catalog</h1><p class="text-xs text-gray-500 mt-1">Create, assign, edit, and deactivate courses.</p></div><a href="{{ url_for('admin.create_course') }}" class="px-4 py-2 bg-[#4F46E5] text-white text-xs font-semibold rounded-xl">Add New Course</a></div>
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden"><div class="p-5 border-b border-gray-100"><h3 class="font-bold">Courses · {{ courses|length }} records</h3></div>
-    <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-gray-50 text-gray-500 uppercase"><tr><th class="p-4">Code</th><th class="p-4">Title</th><th class="p-4">Department</th><th class="p-4">Credits</th><th class="p-4">Teacher</th><th class="p-4">Status</th><th class="p-4 text-right">Actions</th></tr></thead><tbody class="divide-y divide-gray-100">
-    {% for course in courses %}<tr><td class="p-4 font-mono">{{ course.get('code', '—') }}</td><td class="p-4 font-bold">{{ course.get('title', '—') }}</td><td class="p-4">{{ course.get('department', '—') }}</td><td class="p-4">{{ course.get('credits', 0) }}</td><td class="p-4">{{ course.get('teacher_name', course.get('teacher_id', 'Unassigned')) }}</td><td class="p-4">{{ course.get('status', 'active')|capitalize }}</td><td class="p-4 text-right"><a href="{{ url_for('admin.edit_course', course_id=course['_id']) }}" class="px-3 py-1 bg-gray-100 rounded-lg">Edit</a><form method="POST" action="{{ url_for('admin.delete_course', course_id=course['_id']) }}" class="inline ml-1"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="px-3 py-1 bg-red-100 text-red-700 rounded-lg">Deactivate</button></form></td></tr>
-    {% else %}<tr><td colspan="7" class="p-8 text-center text-gray-400">No courses created yet.</td></tr>{% endfor %}
-    </tbody></table></div></div>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200">
+        <div>
+            <h1 class="text-2xl font-bold">Course Catalog</h1>
+            <p class="text-xs text-gray-500 mt-1">Create, assign, edit, and deactivate courses with dynamic department mapping.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ url_for('admin.subjects') }}" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-xl transition flex items-center gap-1.5">
+                <i class="fa-solid fa-book text-[11px]"></i> Subjects
+            </a>
+            <a href="{{ url_for('admin.departments') }}" class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl transition flex items-center gap-1.5">
+                <i class="fa-solid fa-building text-[11px]"></i> Departments
+            </a>
+            <form method="POST" action="{{ url_for('admin.migrate_course_departments') }}" class="inline" data-confirm="Run department migration to link all courses to dynamic department IDs?">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5" title="Migrate legacy department strings to department_id">
+                    <i class="fa-solid fa-arrows-rotate text-[11px]"></i> Run Migration
+                </button>
+            </form>
+            <a href="{{ url_for('admin.create_course') }}" class="px-4 py-2 bg-[#4F46E5] hover:bg-indigo-600 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5">
+                <i class="fa-solid fa-plus text-[11px]"></i> Add New Course
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="font-bold text-sm">Courses · {{ courses|length }} records</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-gray-50 text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="p-4">Code</th>
+                        <th class="p-4">Title</th>
+                        <th class="p-4">Department</th>
+                        <th class="p-4">Subjects</th>
+                        <th class="p-4">Teacher</th>
+                        <th class="p-4">Status</th>
+                        <th class="p-4">Students</th>
+                        <th class="p-4">Updated</th>
+                        <th class="p-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for course in courses %}
+                    <tr class="hover:bg-gray-50/50 transition">
+                        <td class="p-4 font-mono font-semibold text-indigo-600">{{ course.get('code', '—') }}</td>
+                        <td class="p-4">
+                            <span class="font-bold text-gray-900">{{ course.get('title', '—') }}</span>
+                            <span class="block text-gray-400 font-normal text-[11px]">{{ course.get('credits', 0) }} credits · {{ course.get('semester', '—') }}</span>
+                        </td>
+                        <td class="p-4">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-indigo-50 text-indigo-700">
+                                {{ course.get('department_name', course.get('department', 'Unassigned')) }}
+                            </span>
+                        </td>
+                        <td class="p-4">
+                            <a href="{{ url_for('admin.subjects', course_id=course['_id']) }}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 font-semibold text-[11px] transition">
+                                <i class="fa-solid fa-book text-[10px]"></i>
+                                {{ course.get('subject_count', 0) }} subjects
+                            </a>
+                        </td>
+                        <td class="p-4 font-medium text-gray-700">{{ course.get('teacher_name', course.get('teacher_id', 'Unassigned')) }}</td>
+                        <td class="p-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold {{ 'bg-green-50 text-green-700' if course.get('status') == 'active' else 'bg-amber-50 text-amber-700' }}">
+                                {{ course.get('status', 'active')|capitalize }}
+                            </span>
+                        </td>
+                        <td class="p-4">
+                            <span class="font-medium text-gray-900">{{ course.get('active_student_count', 0) }} active</span>
+                            {% if course.get('inactive_student_count') %}
+                                <span class="block text-gray-400 text-[11px]">{{ course.get('inactive_student_count') }} inactive</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-4 text-gray-500">{{ course.get('updated_at', course.get('created_at', '—')) }}</td>
+                        <td class="p-4 text-right space-x-1">
+                            <a href="{{ url_for('admin.edit_course', course_id=course['_id']) }}" class="inline-block px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition">Edit</a>
+                            <form method="POST" action="{{ url_for('admin.delete_course', course_id=course['_id']) }}" class="inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="px-3 py-1 {{ 'bg-green-100 text-green-700 hover:bg-green-200' if course.get('status') == 'inactive' else 'bg-red-100 text-red-700 hover:bg-red-200' }} rounded-lg text-xs font-medium transition">
+                                    {{ 'Activate' if course.get('status') == 'inactive' else 'Deactivate' }}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="p-8 text-center text-gray-400">No courses created yet. Click "Add New Course" to get started.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 {% endblock %}

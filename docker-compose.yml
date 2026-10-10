@@ -1,0 +1,85 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${EDUPREDICT_IMAGE:?Set EDUPREDICT_IMAGE to a versioned image tag}
+    container_name: edupredict_web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${HOST_PORT:-5000}:5000"
+    environment:
+      APP_ENV: ${APP_ENV:?Set APP_ENV to staging or production}
+      FLASK_ENV: ${FLASK_ENV:?Set FLASK_ENV to match APP_ENV}
+      FLASK_DEBUG: ${FLASK_DEBUG:?Set FLASK_DEBUG=false}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in the deployment environment}
+      MONGO_URI: ${MONGO_URI:?Set a production MongoDB URI in the deployment environment}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS:?Set TRUSTED_HOSTS to the real service hostname}
+      SESSION_COOKIE_SECURE: "true"
+      SESSION_COOKIE_HTTPONLY: "true"
+      SESSION_COOKIE_SAMESITE: ${SESSION_COOKIE_SAMESITE:-Lax}
+      PASSWORD_RESET_EXPOSE_LINK: "false"
+      MAIL_PROVIDER: ${MAIL_PROVIDER:-smtp}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      MAIL_SERVER: ${MAIL_SERVER:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_USE_TLS: ${MAIL_USE_TLS:-false}
+      MAIL_DEFAULT_SENDER: ${MAIL_DEFAULT_SENDER:?Set the verified sender address in the deployment environment}
+      PASSWORD_RESET_BASE_URL: ${PASSWORD_RESET_BASE_URL:?Set the HTTPS public reset base URL}
+      RATELIMIT_STORAGE_URI: redis://redis:6379/0
+      PROXY_FIX_X_FOR: "1"
+      PROXY_FIX_X_PROTO: "1"
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-4}
+      GUNICORN_THREADS: ${GUNICORN_THREADS:-2}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
+      MONGO_MAX_POOL_SIZE: ${MONGO_MAX_POOL_SIZE:-50}
+      MONGO_MIN_POOL_SIZE: ${MONGO_MIN_POOL_SIZE:-0}
+      HADOOP_ENABLED: ${HADOOP_ENABLED:-false}
+    volumes:
+      - uploads_data:/app/uploads
+      - models_data:/app/models
+    depends_on:
+      redis:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - edupredict_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: edupredict_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - edupredict_net
+
+# ------------------------------------------------------------------------------
+# Persistent Volumes & Network
+# ------------------------------------------------------------------------------
+volumes:
+  redis_data:
+    driver: local
+  uploads_data:
+    driver: local
+  models_data:
+    driver: local
+
+networks:
+  edupredict_net:
+    driver: bridge

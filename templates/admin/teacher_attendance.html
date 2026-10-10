@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Teacher Attendance — EduPredict{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+    {# ── Page Header ──────────────────────────────────────────────── #}
+    <div class="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Teacher Attendance</h1>
+            <p class="mt-1 text-xs text-gray-500">Mark and track daily faculty attendance. Records are saved per teacher per date.</p>
+        </div>
+        <a href="{{ url_for('admin.teachers') }}"
+           class="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 transition hover:border-indigo-300 hover:text-indigo-600">
+            <i class="fa-solid fa-arrow-left"></i> Faculty Directory
+        </a>
+    </div>
+
+    {# ── Flash Messages ────────────────────────────────────────────── #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="space-y-2">
+        {% for category, message in messages %}
+        <div class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold
+            {{ 'bg-teal-50 text-teal-700 border border-teal-200' if category == 'success' else 'bg-red-50 text-red-700 border border-red-200' }}">
+            <i class="fa-solid {{ 'fa-circle-check' if category == 'success' else 'fa-circle-exclamation' }}"></i>
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {# ── Date Picker + Summary ─────────────────────────────────────── #}
+    <div class="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-6 sm:flex-row sm:items-center sm:justify-between">
+        <form method="GET" action="{{ url_for('admin.teacher_attendance') }}" class="flex items-center gap-3">
+            <label for="date-picker" class="text-xs font-bold uppercase tracking-wide text-gray-500">
+                <i class="fa-solid fa-calendar-days mr-1"></i>Date
+            </label>
+            <input
+                id="date-picker"
+                type="date"
+                name="date"
+                value="{{ date_str }}"
+                class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/50">
+            <button type="submit"
+                    class="rounded-xl bg-gray-100 px-4 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-200">
+                Load
+            </button>
+        </form>
+
+        {# Summary pills #}
+        <div class="flex flex-wrap gap-2 text-[11px] font-semibold">
+            <span class="rounded-lg bg-teal-50 px-3 py-1.5 text-teal-700">
+                <i class="fa-solid fa-check mr-1"></i>Present: {{ summary.present }}
+            </span>
+            <span class="rounded-lg bg-red-50 px-3 py-1.5 text-red-700">
+                <i class="fa-solid fa-xmark mr-1"></i>Absent: {{ summary.absent }}
+            </span>
+            <span class="rounded-lg bg-amber-50 px-3 py-1.5 text-amber-700">
+                <i class="fa-solid fa-clock mr-1"></i>Leave: {{ summary.leave }}
+            </span>
+            <span class="rounded-lg bg-gray-100 px-3 py-1.5 text-gray-500">
+                <i class="fa-regular fa-circle-dot mr-1"></i>Unmarked: {{ summary.unmarked }}
+            </span>
+        </div>
+    </div>
+
+    {# ── Attendance Form ───────────────────────────────────────────── #}
+    <form method="POST" action="{{ url_for('admin.teacher_attendance') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="date" value="{{ date_str }}">
+
+        <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+            <div class="flex items-center justify-between border-b border-gray-100 p-5">
+                <h3 class="font-bold text-gray-900">
+                    Faculty Roster
+                    <span class="ml-2 text-xs font-normal text-gray-500">{{ teachers|length }} teacher(s)</span>
+                </h3>
+                <span class="text-xs text-gray-400">{{ date_str }}</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-gray-50 text-gray-500 uppercase">
+                        <tr>
+                            <th class="p-4">Name</th>
+                            <th class="p-4">Email</th>
+                            <th class="p-4">Department</th>
+                            <th class="p-4 text-center">Present</th>
+                            <th class="p-4 text-center">Absent</th>
+                            <th class="p-4 text-center">Leave</th>
+                            <th class="p-4 text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                    {% for teacher in teachers %}
+                    {% set tid = teacher['_id']|string %}
+                    {% set current_status = existing.get(tid, '') %}
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="p-4 font-bold text-gray-900">{{ teacher.get('name', '—') }}</td>
+                            <td class="p-4 text-gray-500">{{ teacher.get('email', '—') }}</td>
+                            <td class="p-4 text-gray-600">{{ teacher.get('department', '—') }}</td>
+
+                            {# Present radio #}
+                            <td class="p-4 text-center">
+                                <input type="radio"
+                                       id="present_{{ tid }}"
+                                       name="status_{{ tid }}"
+                                       value="present"
+                                       {% if current_status == 'present' %}checked{% endif %}
+                                       class="h-4 w-4 accent-teal-600 cursor-pointer">
+                            </td>
+
+                            {# Absent radio #}
+                            <td class="p-4 text-center">
+                                <input type="radio"
+                                       id="absent_{{ tid }}"
+                                       name="status_{{ tid }}"
+                                       value="absent"
+                                       {% if current_status == 'absent' %}checked{% endif %}
+                                       class="h-4 w-4 accent-red-600 cursor-pointer">
+                            </td>
+
+                            {# Leave radio #}
+                            <td class="p-4 text-center">
+                                <input type="radio"
+                                       id="leave_{{ tid }}"
+                                       name="status_{{ tid }}"
+                                       value="leave"
+                                       {% if current_status == 'leave' %}checked{% endif %}
+                                       class="h-4 w-4 accent-amber-500 cursor-pointer">
+                            </td>
+
+                            {# Current saved status badge #}
+                            <td class="p-4 text-center">
+                                {% if current_status == 'present' %}
+                                    <span class="rounded-lg bg-teal-50 px-2.5 py-1 text-[11px] font-semibold text-teal-700">Present</span>
+                                {% elif current_status == 'absent' %}
+                                    <span class="rounded-lg bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700">Absent</span>
+                                {% elif current_status == 'leave' %}
+                                    <span class="rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">Leave</span>
+                                {% else %}
+                                    <span class="rounded-lg bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-400">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="p-10 text-center text-gray-400">
+                                <i class="fa-solid fa-person-chalkboard mb-3 text-2xl"></i>
+                                <p>No teachers found in the system.</p>
+                                <a href="{{ url_for('admin.add_teacher') }}"
+                                   class="mt-2 inline-block text-indigo-600 hover:underline">Register a teacher</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {# ── Save Button ──────────────────────────────────────── #}
+            {% if teachers %}
+            <div class="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-6 py-4">
+                <p class="text-xs text-gray-400">
+                    <i class="fa-solid fa-info-circle mr-1"></i>
+                    Submitting will overwrite any previously saved status for the selected date.
+                </p>
+                <button type="submit"
+                        class="inline-flex items-center gap-2 rounded-xl bg-[#4F46E5] px-6 py-2.5 text-xs font-semibold text-white shadow-md transition hover:bg-[#6366F1]">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Attendance
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </form>
+
+</div>
+{% endblock %}
+

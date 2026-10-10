@@ -6,11 +6,23 @@
     <h1 class="text-2xl font-bold">{{ 'Edit' if course else 'Create' }} Course</h1>
     <label class="block text-xs font-semibold">Course code<input name="code" required value="{{ course.get('code', '') if course else '' }}" class="mt-1 w-full px-3 py-2 border rounded-xl"></label>
     <label class="block text-xs font-semibold">Title<input name="title" required value="{{ course.get('title', '') if course else '' }}" class="mt-1 w-full px-3 py-2 border rounded-xl"></label>
-    <div class="grid md:grid-cols-2 gap-4"><label class="block text-xs font-semibold">Department<input name="department" value="{{ course.get('department', '') if course else '' }}" class="mt-1 w-full px-3 py-2 border rounded-xl"></label><label class="block text-xs font-semibold">Credits<input type="number" min="0" max="30" name="credits" value="{{ course.get('credits', 3) if course else 3 }}" class="mt-1 w-full px-3 py-2 border rounded-xl"></label></div>
+    <div class="grid md:grid-cols-2 gap-4">
+    <label class="block text-xs font-semibold">Department
+        <select name="department_id" class="mt-1 w-full px-3 py-2 border rounded-xl">
+            <option value="">Unassigned</option>
+            {% for dept in departments %}
+                <option value="{{ dept['_id'] }}" {% if course and (course.get('department_id')|string == dept['_id']|string or course.get('department') == dept['name']) %}selected{% endif %}>{{ dept['name'] }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label class="block text-xs font-semibold">Credits
+        <input type="number" min="0" max="30" name="credits" value="{{ course.get('credits', 3) if course else 3 }}" class="mt-1 w-full px-3 py-2 border rounded-xl">
+    </label>
+</div>
     <label class="block text-xs font-semibold">Semester<input name="semester" value="{{ course.get('semester', '') if course else '' }}" class="mt-1 w-full px-3 py-2 border rounded-xl"></label>
     <label class="block text-xs font-semibold">Assigned teacher<select name="teacher_id" class="mt-1 w-full px-3 py-2 border rounded-xl"><option value="">Unassigned</option>{% for teacher in teachers %}<option value="{{ teacher['_id'] }}" {% if course and course.get('teacher_id') == teacher['_id']|string %}selected{% endif %}>{{ teacher.get('name', 'Teacher') }}</option>{% endfor %}</select></label>
     <label class="block text-xs font-semibold">Enrolled students<select name="student_ids" multiple class="mt-1 w-full px-3 py-2 border rounded-xl h-32">{% for student in students %}<option value="{{ student['_id'] }}" {% if course and student['_id']|string in course.get('enrolled_student_ids', []) %}selected{% endif %}>{{ student.get('name', 'Student') }} · {{ student.get('email', '') }}</option>{% endfor %}</select></label>
-    <label class="block text-xs font-semibold">Status<select name="status" class="mt-1 w-full px-3 py-2 border rounded-xl"><option value="active" {% if not course or course.get('status') == 'active' %}selected{% endif %}>Active</option><option value="inactive" {% if course and course.get('status') == 'inactive' %}selected{% endif %}>Inactive</option></select></label>
+    <label class="block text-xs font-semibold">Course status<select name="status" class="mt-1 w-full px-3 py-2 border rounded-xl"><option value="active" {% if not course or course.get('status') == 'active' %}selected{% endif %}>Active (visible to enrolled students)</option><option value="inactive" {% if course and course.get('status') == 'inactive' %}selected{% endif %}>Inactive / Draft (hidden from students)</option></select></label>
     <button class="px-5 py-2.5 bg-[#4F46E5] text-white text-xs font-semibold rounded-xl">Save Course</button> <a href="{{ url_for('admin.courses') }}" class="text-xs text-gray-500">Cancel</a>
 </form></div>
 {% endblock %}

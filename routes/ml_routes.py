@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, jsonify, current_app, request, session
 from datetime import datetime, timezone
+import math
 import os
 from uuid import uuid4
 from bson import ObjectId
@@ -9,11 +10,33 @@ from ml.model_manager import ModelManager, SUPPORTED_MODEL_TYPES
 from services.alert_service import AlertService
 from services.academic_data_service import AcademicDataService
 from services.audit_service import AuditService
+from extensions import limiter
 
 ml_bp = Blueprint('ml', __name__, url_prefix='/ml')
 
 # Keep this in sync with ModelManager.SUPPORTED_MODEL_TYPES
 VALID_MODEL_TYPES = SUPPORTED_MODEL_TYPES
+MAX_TRAINING_ROWS = 10000
+MAX_TRAINING_COLUMNS = 100
+
+
+def _validate_numeric_matrix(rows, name="X"):
+    if not isinstance(rows, list) or not rows or len(rows) > MAX_TRAINING_ROWS:
+        raise ValueError(f"{name} must contain 1 to {MAX_TRAINING_ROWS} rows.")
+    if not all(isinstance(row, list) for row in rows):
+        raise ValueError(f"{name} must be a numeric matrix.")
+    width = len(rows[0])
+    if not width or width > MAX_TRAINING_COLUMNS or any(len(row) != width for row in rows):
+        raise ValueError(f"{name} must have consistent rows with 1 to {MAX_TRAINING_COLUMNS} columns.")
+    if not all(isinstance(value, (int, float)) and math.isfinite(value) for row in rows for value in row):
+        raise ValueError(f"{name} must contain only finite numeric values.")
+
+
+def _validate_features(features):
+    if not isinstance(features, list) or not features or len(features) > MAX_TRAINING_COLUMNS:
+        raise ValueError(f"features must contain 1 to {MAX_TRAINING_COLUMNS} values.")
+    if not all(isinstance(value, (int, float)) and math.isfinite(value) for value in features):
+        raise ValueError("features must contain only finite numeric values.")
 
 
 @ml_bp.route('/predictions', methods=['GET'])
@@ -24,7 +47,7 @@ def view_predictions():
         query['student_id'] = session.get('user_id')
     elif session.get('role') == 'teacher':
         course_ids = [str(course['_id']) for course in mongo.db.courses.find({
-            'teacher_id': str(session.get('user_id')),
+            'teacher_id': {'$in': [str(session.get('user_id')), ObjectId(session.get('user_id'))] if ObjectId.is_valid(str(session.get('user_id'))) else [str(session.get('user_id'))]},
             'status': {'$ne': 'inactive'},
         }, {'_id': 1})]
         assigned_students = AcademicDataService.student_ids_for_courses(course_ids)
@@ -34,6 +57,7 @@ def view_predictions():
 
 
 @ml_bp.route('/run-model/<model_type>', methods=['POST'])
+@limiter.limit("5 per hour")
 @role_required('admin', 'analyst')
 def run_model(model_type):
     """
@@ -59,6 +83,7 @@ def run_model(model_type):
         }), 400
 
     try:
+        _validate_numeric_matrix(X)
         model = ModelManager.get_model(model_type)
         if model_type == 'anomaly':
             metrics = model.train(X)
@@ -68,6 +93,8 @@ def run_model(model_type):
                     'status': 'error',
                     'message': 'JSON body must include y for this model type.'
                 }), 400
+            if len(y) != len(X) or len(y) > MAX_TRAINING_ROWS or not all(isinstance(value, (int, float)) and math.isfinite(value) for value in y):
+                return jsonify({'status': 'error', 'message': 'y must contain one finite numeric value per X row.'}), 400
             metrics = model.train(X, y)
         if not ModelManager.save_model(model_type, model):
             raise RuntimeError('The trained model could not be saved.')
@@ -109,6 +136,7 @@ def model_status():
 
 
 @ml_bp.route('/train-from-dataset/<dataset_id>/<model_type>', methods=['POST'])
+@limiter.limit("5 per hour")
 @role_required('admin', 'analyst')
 def train_from_dataset(dataset_id, model_type):
     if model_type not in VALID_MODEL_TYPES:
@@ -124,6 +152,8 @@ def train_from_dataset(dataset_id, model_type):
     try:
         frame = ProcessingService.clean_dataframe(ProcessingService.load_dataframe(path))
         numeric = frame.select_dtypes(include=["number"])
+        if len(numeric) > MAX_TRAINING_ROWS or numeric.shape[1] > MAX_TRAINING_COLUMNS:
+            return jsonify({"status": "error", "message": "Dataset exceeds the training size limits."}), 400
         if model_type == "anomaly":
             X = numeric.values.tolist()
             y = None
@@ -168,11 +198,12 @@ def train_from_dataset(dataset_id, model_type):
         AuditService.record("model_trained", "model", model_version, session.get("user_id"), session.get("role"), metadata={"model_type": model_type, "dataset_id": dataset_id, "metrics": metrics})
         return jsonify({"status": "success", "metrics": metrics, "dataset_id": dataset_id})
     except Exception as exc:
-        current_app.logger.exception("Dataset model training failed: %s", exc)
-        return jsonify({"status": "error", "message": str(exc)}), 400
+        current_app.logger.error("Dataset model training failed (error type: %s).", type(exc).__name__)
+        return jsonify({"status": "error", "message": "Dataset model training failed."}), 500
 
 
 @ml_bp.route('/predict/<model_type>', methods=['POST'])
+@limiter.limit("60 per minute")
 @role_required('admin', 'teacher', 'analyst')
 def predict(model_type):
     """Load persisted model and run prediction on posted features."""
@@ -181,23 +212,6 @@ def predict(model_type):
             'status': 'error',
             'message': f"Unknown model type: '{model_type}'."
         }), 400
-
-    if not ModelManager.model_exists(model_type):
-        return jsonify({
-            'status': 'error',
-            'message': f"Model '{model_type}' has not been trained yet."
-        }), 404
-
-    model = ModelManager.load_model(model_type)
-    if model is None:
-        current_app.logger.error("Failed to load model '%s' for prediction.", model_type)
-        return jsonify({
-            'status': 'error',
-            'message': f"Model '{model_type}' could not be loaded. It may be corrupt."
-        }), 500
-    training = mongo.db.model_training.find_one({"model_type": model_type, "status": "active"}, sort=[("trained_at", -1)])
-    if not training or not ModelManager.artifact_matches(model_type, training):
-        return jsonify({'status': 'error', 'message': f"Model '{model_type}' has no verified active artifact."}), 409
 
     payload = request.get_json(silent=True) or {}
     features = payload.get('features')
@@ -208,17 +222,53 @@ def predict(model_type):
         }), 400
 
     try:
+        _validate_features(features)
         student_id = str(payload.get("student_id", "")).strip()
         if session.get("role") == "teacher":
             if not student_id:
                 return jsonify({"status": "error", "message": "Teachers must specify an assigned student."}), 400
             if student_id not in AcademicDataService.teacher_student_ids(session.get("user_id")):
                 return jsonify({"status": "error", "message": "You may only score students assigned to your courses."}), 403
+        if session.get("role") == "analyst" and student_id:
+            if not AcademicDataService.is_user_authorized_for_student(
+                session.get("user_id"), "analyst", student_id
+            ):
+                return jsonify({
+                    "status": "error",
+                    "message": "You are not authorized to generate predictions for this student."
+                }), 403
         course_id = str(payload.get("course_id", "")).strip() or None
+        if session.get("role") == "analyst" and course_id and course_id not in AcademicDataService.analyst_course_ids(session.get("user_id")):
+            return jsonify({"status": "error", "message": "You may only score students in your authorized courses."}), 403
         if session.get("role") == "teacher" and course_id and not any(
             str(row.get("_id")) == course_id for row in mongo.db.courses.find({"teacher_id": str(session.get("user_id")), "status": {"$ne": "inactive"}}, {"_id": 1})
         ):
             return jsonify({"status": "error", "message": "You may only score students in your assigned courses."}), 403
+
+        # Course demand: return insufficient_historical_data status
+        if model_type == 'demand':
+            return jsonify({
+                'status': 'insufficient_historical_data',
+                'message': 'Historical course demand / enrollment time-series data is missing.',
+            }), 200
+
+        # Complete object authorization before loading models or reading training
+        # metadata, so unauthorized requests cannot trigger prediction work.
+        if not ModelManager.model_exists(model_type):
+            return jsonify({
+                'status': 'error',
+                'message': f"Model '{model_type}' has not been trained yet."
+            }), 404
+        model = ModelManager.load_model(model_type)
+        if model is None:
+            current_app.logger.error("Failed to load model '%s' for prediction.", model_type)
+            return jsonify({
+                'status': 'error',
+                'message': f"Model '{model_type}' could not be loaded. It may be corrupt."
+            }), 500
+        training = mongo.db.model_training.find_one({"model_type": model_type, "status": "active"}, sort=[("trained_at", -1)])
+        if not training or not ModelManager.artifact_matches(model_type, training):
+            return jsonify({'status': 'error', 'message': f"Model '{model_type}' has no verified active artifact."}), 409
         requested_feature_version = payload.get("feature_version")
         feature_doc = None
         if student_id:
@@ -267,12 +317,15 @@ def predict(model_type):
 
 
 @ml_bp.route('/correlation', methods=['POST'])
+@limiter.limit("10 per minute")
 @role_required('admin', 'analyst')
 def correlation():
     payload = request.get_json(silent=True) or {}
     rows = payload.get("rows")
-    if not isinstance(rows, list) or not rows:
-        return jsonify({"status": "error", "message": "rows must be a non-empty list of objects."}), 400
+    if not isinstance(rows, list) or not rows or len(rows) > MAX_TRAINING_ROWS or not all(isinstance(row, dict) for row in rows):
+        return jsonify({"status": "error", "message": f"rows must contain 1 to {MAX_TRAINING_ROWS} objects."}), 400
+    if len({key for row in rows for key in row}) > MAX_TRAINING_COLUMNS:
+        return jsonify({"status": "error", "message": "rows contain too many columns."}), 400
     from services.processing_service import ProcessingService
     import pandas as pd
     try:
@@ -286,4 +339,5 @@ def correlation():
         })
         return jsonify({"status": "success", "correlations": summary["correlations"]})
     except Exception as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 400
+        current_app.logger.error("Correlation analysis failed (error type: %s).", type(exc).__name__)
+        return jsonify({"status": "error", "message": "Correlation analysis failed."}), 500

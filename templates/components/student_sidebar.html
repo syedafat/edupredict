@@ -4,12 +4,5 @@
         {% set items = [('Dashboard', 'student.dashboard', 'fa-chart-pie'), ('My courses', 'student.courses', 'fa-book-open'), ('My performance', 'student.grades', 'fa-chart-line'), ('My attendance', 'student.attendance', 'fa-calendar-check'), ('My assignments', 'student.assignments', 'fa-clipboard-list'), ('AI predictions', 'student.predictions', 'fa-wand-magic-sparkles'), ('Alerts & notifications', 'student.notifications', 'fa-bell'), ('EduPredict insights', 'student.dashboard', 'fa-lightbulb'), ('Feedback & support', 'student.support', 'fa-headset'), ('My profile', 'student.profile', 'fa-user')] %}
         {% for label, endpoint, icon in items %}<a href="{{ url_for(endpoint) }}" title="{{ label }}" class="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition {{ 'bg-indigo-500 text-white shadow-lg shadow-indigo-950/30' if request.endpoint == endpoint else 'text-slate-400 hover:bg-slate-900 hover:text-white' }}"><i class="fa-solid {{ icon }} w-5 text-center"></i><span class="student-sidebar-label">{{ label }}</span></a>{% endfor %}
     </nav>
-    <div class="border-t border-slate-800 p-3"><a href="{{ url_for('auth.logout') }}" title="Logout" class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-950/40"><i class="fa-solid fa-right-from-bracket w-5 text-center"></i><span class="student-sidebar-label">Logout</span></a></div>
+    <div class="border-t border-slate-800 p-3"><form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" title="Logout" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-950/40"><i class="fa-solid fa-right-from-bracket w-5 text-center"></i><span class="student-sidebar-label">Logout</span></button></form></div>
 </aside>
-
-<style>
-    #student-sidebar.is-collapsed { width: 4.5rem; }
-    #student-sidebar.is-collapsed .student-sidebar-label { display: none; }
-    #student-sidebar.is-collapsed > div:first-child { justify-content: center; padding-left: .75rem; padding-right: .75rem; }
-    @media (max-width: 767px) { #student-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 40; transform: translateX(-100%); } #student-sidebar.is-mobile-open { transform: translateX(0); } }
-</style>

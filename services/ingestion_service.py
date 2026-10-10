@@ -4,6 +4,7 @@ import hashlib
 from datetime import datetime, timezone
 from flask import current_app
 from werkzeug.utils import secure_filename
+from pymongo.errors import DuplicateKeyError
 from services.hadoop_service import HadoopService
 from services.processing_service import ProcessingService
 
@@ -103,8 +104,14 @@ class IngestionService:
                 'status': 'uploaded',
                 'hdfs_status': 'pending',
             })
+        except DuplicateKeyError:
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+            return {'success': False, 'error': 'This dataset has already been uploaded for the selected dataset type.'}
         except Exception as e:
-            current_app.logger.exception("Could not record dataset metadata: %s", e)
+            current_app.logger.error("Could not record dataset metadata (error type: %s).", type(e).__name__)
             try:
                 os.remove(file_path)
             except OSError:
@@ -119,7 +126,7 @@ class IngestionService:
         try:
             hdfs_success = HadoopService.upload_to_hdfs(file_path, hdfs_destination)
         except Exception as e:
-            current_app.logger.warning(f"HDFS upload failed (non-fatal): {e}")
+            current_app.logger.warning("HDFS upload failed (non-fatal; error type: %s).", type(e).__name__)
 
         processing = ProcessingService.process_dataset(file_path)
         persisted_records = {}
@@ -131,8 +138,8 @@ class IngestionService:
                     processing["processed_path"], dataset_type, inserted.inserted_id
                 )
             except Exception as exc:
-                current_app.logger.exception("Processed records could not be persisted: %s", exc)
-                processing["records_persist_error"] = str(exc)
+                current_app.logger.error("Processed records could not be persisted (error type: %s).", type(exc).__name__)
+                processing["records_persist_error"] = type(exc).__name__
         elif quality_failed:
             mongo.db.rejected_records.insert_one({
                 "dataset_id": inserted.inserted_id,
